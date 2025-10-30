@@ -30,7 +30,6 @@ import random
 from tqdm import tqdm
 import re
 
-
 # -----------------------------
 # Değişkenler
 # -----------------------------
@@ -273,127 +272,10 @@ class ZemberekClientIface:
             
             return tr_lower(sonuclar[0]["lemmas"][-1])
 
-class LMScorerIface:
-    """Language model scorer interface"""
-    def score_token(self, left: List[str], cand: str, right: List[str]) -> float:
-        # Bu BertLMScorer'a bağlanacak
-        return 0.0
-
-# -----------------------------
-# Scoring
-# -----------------------------
-class TokenScorer:
-    """Token skorlama sınıfı"""
-    
-    def __init__(self, zemb: ZemberekClientIface, lm: LMScorerIface,
-                 concept_lex: Set[str], weights: Weights):
-        self.zemb = zemb
-        self.lm = lm
-        self.concept_lex = set(tr_lower(w) for w in concept_lex)
-        self.w = weights
-
-        # Domain context hints (elektrik terimleri)
-        self.domain_hints = {
-            'pano', 'priz', 'kaçak', 'akım', 'trafo', 'kesici', 'sigorta', 
-            'dg', 'inverter', 'reaktif', 'gerilim', 'arıza', 'faz', 'nötr',
-            'toprak', 'kablo', 'hat', 'direk', 'sayaç', 'kontaktör', 'şalter',
-            'elektrik', 'voltaj', 'amper', 'watt', 'güç', 'enerji'
-        }
-        
-        # Non-domain hints (sigara ile ilgili)
-        self.nondomain_hints = {
-            'içmek', 'içiyorum', 'paket', 'duman', 'tütün', 'sigara',
-            'yakıyorum', 'bıraktım', 'zararlı', 'sağlık'
-        }
-
-    def domain_boost(self, cand: str, left: List[str], right: List[str]) -> float:
-        """Domain sözlüğü ve context'e göre bonus"""
-        cand_lower = tr_lower(cand)
-        boost = 0.0
-        
-        # Domain sözlüğünde varsa bonus
-        if cand_lower in self.concept_lex:
-            boost += self.w.gamma_domain
-        
-        # # Context'e göre ek bonus
-        # ctx = set(tr_lower(t) for t in (left + right))
-        
-        # # Elektrik domain'i için
-        # if cand_lower == 'sigorta':
-        #     domain_overlap = len(self.domain_hints & ctx)
-        #     if domain_overlap > 0:
-        #         boost += 0.3 * domain_overlap
-        
-        # # Sigara domain'i için
-        # elif cand_lower == 'sigara':
-        #     nondomain_overlap = len(self.nondomain_hints & ctx)
-        #     if nondomain_overlap > 0:
-        #         boost += 0.2 * nondomain_overlap
-        
-        # # Arıza kelimesi için
-        # elif cand_lower == 'arıza':
-        #     if any(w in ctx for w in ['nedeniyle', 'kesinti', 'elektrik', 'sayaç']):
-        #         boost += 0.3
-        
-        return boost
-
-    def morph_ok(self, cand: str) -> float:
-        """Morfolojik geçerlilik skoru"""
-        return self.w.beta_morph if self.zemb.analyze_valid(cand) else self.w.beta_morph * (-1)
-
-    def lm_score(self, left: List[str], cand: str, right: List[str]) -> float:
-        """Language model skoru"""
-        return self.lm.score_token(left, cand, right)
-
-    def edit_cost(self, cand: str, original: str) -> float:
-        """Edit distance maliyeti"""
-        dist = weighted_edit_distance(cand, original)
-        # Normalize et (0-1 arası)
-        max_len = max(len(cand), len(original))
-        if max_len > 0:
-            return dist / max_len
-        return 0.0
-
-    def diacritic_cost(self, cand: str, original: str) -> float:
-        """Diacritic farklılık maliyeti"""
-        return diacritic_penalty(cand, original)
-
-    def keyboard_cost(self, cand: str, original: str) -> float:
-        """Klavye uzaklık maliyeti"""
-        # Edit distance'da zaten hesaplanıyor, ekstra küçük ceza
-        return 0.1 * abs(len(cand) - len(original))
-
-    def score_candidate(self, left: List[str], cand: str, right: List[str], 
-                        original: str, operation: str = 'REPLACE') -> float:
-        """Aday kelimeyi skorla"""
-        s = 0.0
-        
-        # Temel skorlar
-        # s += self.w.alpha_lm * self.lm_score(left, cand, right)
-        s += self.morph_ok(cand)
-        # s += self.domain_boost(cand, left, right)
-        
-        # Maliyetler
-        s -= self.w.delta_edit * self.edit_cost(cand, original)
-        s -= self.w.eps_diacrit * self.diacritic_cost(cand, original)
-        s -= self.w.zeta_keyboard * self.keyboard_cost(cand, original)
-        
-        # # İşlem bonusu/cezası
-        # if operation == 'SPLIT':
-        #     s += self.w.eta_split  # Split işlemine bonus
-        # elif operation == 'MERGE':
-        #     s += 0.2  # Merge işlemine küçük bonus
-        
-        return s
-
 
 # -----------------------------
 # Beam search corrector
 # -----------------------------
-
-from dataclasses import dataclass
-from typing import List, Optional, Iterable, Set, Tuple
-
 
 @dataclass
 class BeamNode:
@@ -481,62 +363,7 @@ class BeamSearchCorrector:
     def only_letters_turkish(self, text):
         """Türkçe karakterler dahil sadece harfler"""
         return re.sub(r'[^a-zA-ZğüşöçıİĞÜŞÖÇ]', '', text)
-    
-    def _create_node1_normalize(self, tokens: List[str], verbose: bool = False) -> BeamNode:
-        """
-        ✨ NODE 1: NORMALIZE PATH
         
-        Strateji:
-        - Her tokeni normalize et
-        - Normalize edilmiş tokenin KÖKÜNÜ al
-        
-        Returns:
-            BeamNode
-        """
-        if verbose:
-            print(f"\n🔵 NODE 1: NORMALIZE PATH")
-        
-        out_tokens = []
-        operations = ['STRATEGY:NODE1(NORMALIZE_ALL)']
-        quality_score = 0.0
-        
-        
-        normalized = self.zemb.normalize(" ".join(tokens))
-             
-        for tok, tok_ in zip(normalized.split(), tokens):
-            final_token = None
-            
-            tok = self.only_letters_turkish(tok)
-            # n_iter = iter(normalized.split())
-            # tok = next(n_iter)
-            
-            if tok_ in self.do_not_touch:
-                final_token = tok_
-                
-            elif self.kelime_düzelt(tok_)["token"] in self.do_not_touch:
-                final_token = self.kelime_düzelt(tok_)["token"]
-            
-            else:
-                final_token = tok if tok != "UNK" else self.kelime_düzelt(tok)["token"]
-            
-            if final_token:                                  
-                out_tokens.append(final_token)
-                
-            else:
-                out_tokens.append(tok)
-            
-                                       
-        if verbose:
-            print(f"   Quality: {quality_score:.2f}")
-            print(f"   Sample: {' '.join(out_tokens[:5])}...")
-        
-        return BeamNode(
-            i=len(tokens),
-            out_tokens=out_tokens,
-            operations=operations,
-            quality_score=quality_score
-        )
-    
     def _create_node1_normalize_hybrid(
         self,
         tokens: List[str],
@@ -715,218 +542,6 @@ class BeamSearchCorrector:
     
     
     
-def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structures):
-    """
-    Tüm input verisini işleyip sonuçları DataFrame'e kaydeder
-    
-    Args:
-        _input: Input DataFrame
-        zemb: Zemberek analyzer
-        corrector: Spell corrector
-        STOP_WORDS: Stop words (set, list veya dict olabilir)
-        df: Arıza DataFrame
-        structures: ArızaStructures instance
-    
-    Returns:
-        results_df: Sonuçları içeren DataFrame
-    """
-    
-    # ✨ FIX: STOP_WORDS'ü set'e çevir (dict ise)
-    if isinstance(STOP_WORDS, dict):
-        stop_words_set = set(STOP_WORDS.keys())
-        print("⚠️  STOP_WORDS dict formatında, set'e çevrildi")
-    elif isinstance(STOP_WORDS, list):
-        stop_words_set = set(STOP_WORDS)
-        print("⚠️  STOP_WORDS list formatında, set'e çevrildi")
-    else:
-        stop_words_set = STOP_WORDS  # Zaten set
-    
-    # Sonuçları saklamak için liste
-    results_list = []
-    
-    # # OG Fider olmayanları filtrele
-    # og_fider_olamayanlar = _input[_input["cause code"] != "OG Fider Açması"].copy()
-    
-    # # İndeksi sıfırla (tekrarlanan indeks değerlerini önlemek için)
-    # og_fider_olamayanlar = og_fider_olamayanlar.reset_index(drop=True)
-    
-    print(f"\n🔄 Toplam {len(_input)} kayıt işlenecek...\n")
-    
-    # Her satırı işle
-    for idx in tqdm(_input.index, desc="İşleniyor"):
-        
-        # tqdm_iter = iter(tqdm(_input.index, desc="İşleniyor"))
-        # idx = next(tqdm_iter)
-        
-        row = None  # Hata durumu için
-        try:
-            # Veriyi al
-            # idx = next(tqdm_iter)
-            
-            row = _input.loc[idx]
-            tokens_raw = row["Concatted"]
-            # tokens_raw = "BRANSMAN ARIZASI-SALIHLI	Durasilli	ATATURK	43	ACILIYET BELIRTTI.	DURASILLI TR-4_;AO - Enerji Kesintili;AG;Klemens Arızası;AG Klemens yenilendi;;BRANŞMAN ARIZASI-SALİHLİ	Durasıllı	ATATÜRK	43	ACILIYET BELIRTTI.	DURASILLI TR-4_45-78-M01146_953261945_953261945_ 		06-02-2025 15:43:07		Açık	Bağlı Değil	 Enerji Gidip-Geliyor"
-            cause_code = row["cause code"]
-            çözüm_açıklama = row.get("Çözüm Açıklama", None)  # ✨ .get() ile güvenli erişim
-            
-            # Tokenize
-            tokenized = zemb.tokenize(tokens_raw)
-            
-            # Token işleme
-            final_tokens = []
-            for token, token_type in tokenized:
-                if token_type in {'Word', 'WordWithSymbol', 'UnknownWord'}:
-                    if token_type in {'WordWithSymbol', 'UnknownWord'}:
-                        parts = token.replace('/', '-').split('-')
-                        final_tokens.extend([tr_lower(p) for p in parts if p])
-                    else:
-                        final_tokens.append(tr_lower(token))
-            
-            tokens = final_tokens
-            
-            # Spell correction - correct() beam list döndürür
-            result_beam = corrector.correct(tokens, verbose=False)
-            
-            # İlk beam'den tokenları al ve stop words filtrele
-            if result_beam and len(result_beam) > 0:
-                corrected_tokens = result_beam[0].out_tokens
-                # ✨ FIX: set kullan
-                filtered_tokens = [t for t in corrected_tokens if t not in stop_words_set]
-            else:
-                # Düzeltme başarısızsa orijinal tokenları kullan
-                # ✨ FIX: set kullan
-                filtered_tokens = [t for t in tokens if t not in stop_words_set]
-            
-            # Tahmin yap
-            result = matcher.predict(
-                user_input=" ".join(filtered_tokens), 
-                cause_code=cause_code, 
-                çözüm_açıklama=çözüm_açıklama,
-                top_k=5,
-                min_confidence=0.01
-            )
-            
-            # Predictions'ı al
-            if isinstance(result, dict) and 'predictions' in result:
-                predictions = result['predictions']
-            else:
-                predictions = result if isinstance(result, list) else []
-            
-            # En iyi tahmini bul
-            result_best = predictions[0]['kategori'] if predictions else "NO_MATCH"
-            
-            # Full predictions text oluştur
-            if predictions:
-                result_full_parts = []
-                for i, pred in enumerate(predictions[:5], 1):
-                    # ✨ FIX: Mevcut alan adlarını kontrol et
-                    confidence_key = 'confidence' if 'confidence' in pred else 'confidence_pct'
-                    
-                    # Güven skorunu al
-                    confidence = pred.get(confidence_key, 0.0)
-                    
-                    pred_text = f"{i}. {pred['kategori']} (Güven: {confidence:.2f}"
-                    
-                    # Opsiyonel alanları ekle
-                    if 'coverage' in pred:
-                        coverage_val = pred['coverage']
-                        if coverage_val < 1:  # Oran olarak verilmişse
-                            coverage_val *= 100
-                        pred_text += f", Kapsam: {coverage_val:.0f}%"
-                    elif 'avg_coverage' in pred:
-                        coverage_val = pred['avg_coverage']
-                        if coverage_val < 1:
-                            coverage_val *= 100
-                        pred_text += f", Kapsam: {coverage_val:.0f}%"
-                    
-                    if 'match_count' in pred:
-                        pred_text += f", Eşleşme: {pred['match_count']}"
-                    
-                    # Match summary ekle
-                    if 'match_summary' in pred:
-                        summary = pred['match_summary']
-                        if isinstance(summary, dict):
-                            total = summary.get('total', 0)
-                            if total > 0:
-                                pred_text += f", Toplam: {total}"
-                    
-                    pred_text += ")"
-                    result_full_parts.append(pred_text)
-                    
-                result_full = " | ".join(result_full_parts)
-            else:
-                result_full = "NO_MATCH"
-            
-            # Sonucu listeye ekle
-            results_list.append({
-                'input_concatted': tokens_raw,
-                'cause_code': cause_code,
-                'çözüm_açıklama': çözüm_açıklama if çözüm_açıklama else "",
-                'result_best': result_best,
-                'result_full': result_full,
-                'corrected_tokens': " ".join(filtered_tokens),
-                'num_predictions': len(predictions) if predictions else 0,
-                'method': result.get('method', 'unknown') if isinstance(result, dict) else 'unknown'
-            })
-            
-        except Exception as e:
-            # Hata durumunda da kaydet
-            error_msg = str(e)
-            
-            if row is not None:
-                results_list.append({
-                    'input_concatted': row.get("Concatted", "ERROR"),
-                    'cause_code': row.get("cause code", "ERROR"),
-                    'çözüm_açıklama': row.get("Çözüm Açıklama", ""),
-                    'result_best': f"ERROR: {error_msg}",
-                    'result_full': f"ERROR: {error_msg}",
-                    'corrected_tokens': "",
-                    'num_predictions': 0,
-                    'method': 'error'
-                })
-            else:
-                results_list.append({
-                    'input_concatted': f"ERROR at index {idx}",
-                    'cause_code': "ERROR",
-                    'çözüm_açıklama': "",
-                    'result_best': f"ERROR: {error_msg}",
-                    'result_full': f"ERROR: {error_msg}",
-                    'corrected_tokens': "",
-                    'num_predictions': 0,
-                    'method': 'error'
-                })
-            
-            print(f"\n⚠️ Hata (index {idx}): {error_msg}")
-            
-            # Debug için daha fazla bilgi
-            import traceback
-            print(traceback.format_exc())
-    
-    # DataFrame oluştur
-    results_df = pd.DataFrame(results_list)
-    
-    # Özet istatistikler
-    print(f"\n{'='*60}")
-    print("📊 İŞLEM SONUÇLARI")
-    print(f"{'='*60}")
-    print(f"✅ Toplam işlenen kayıt: {len(results_df)}")
-    print(f"❌ NO_MATCH sayısı: {(results_df['result_best'] == 'NO_MATCH').sum()}")
-    print(f"✅ Başarılı eşleşme: {(results_df['result_best'] != 'NO_MATCH').sum()}")
-    
-    # Hata sayısını göster
-    error_count = results_df['result_best'].str.startswith('ERROR').sum()
-    if error_count > 0:
-        print(f"⚠️  Hatalı kayıt: {error_count}")
-    
-    # Method dağılımı (eğer varsa)
-    if 'method' in results_df.columns:
-        print(f"\n📋 Method Dağılımı:")
-        method_counts = results_df['method'].value_counts()
-        for method, count in method_counts.items():
-            print(f"   {method}: {count}")
-    
-    return results_df
-
 def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structures):
     """
     ✨ IDF SKORLAMALI - Tüm input verisini işleyip sonuçları DataFrame'e kaydeder
@@ -1309,53 +924,8 @@ def print_result(result):
     
     print("\n" + "="*80)
 
-def Test(_input, zemb, corrector, matcher):
-    
-    og_fider_olamayanlar_index = _input[_input["cause code"] != "OG Fider Açması"].index.to_list()  
-    
-    sayı = random.choice(og_fider_olamayanlar_index)
-    tokens = _input.iloc[sayı]["Concatted"]
-    cause_code = _input.iloc[sayı]["cause code"]
-    
-    tokenized = zemb.tokenize(tokens)
 
-    # # Anlamlı tipleri al
-    # meaningful_types = {'Word'}
-    # tokens = [tr_lower(token) for token, token_type in tokenized if token_type in meaningful_types]
-    
-    # print(filtered_tokens)
-
-    
-    final_tokens = []
-    
-    for token, token_type in tokenized:
-        if token_type in {'Word', 'WordWithSymbol', 'UnknownWord'}:
-            # WordWithSymbol ve UnknownWord'leri ayır
-            if token_type in {'WordWithSymbol', 'UnknownWord'}:
-                # - ve / karakterlerine göre böl
-                parts = token.replace('/', '-').split('-')
-                # Boş stringleri filtrele ve ekle
-                final_tokens.extend([tr_lower(p) for p in parts if p])
-            else:
-                # Normal Word ise direkt ekle
-                final_tokens.append(tr_lower(token))
-    
-    tokens = final_tokens
-    
-    # Spell correction
-    node = corrector.correct(tokens, verbose=False)
-    # Bu node için tahmin yap
-    result = matcher.predict(
-        " ".join(node[0].out_tokens), 
-        cause_code, 
-        top_k=5,  # Daha fazla aday al
-        min_confidence=0.01
-    )
-    
-    # Kullanım
-    print_result(result)
-
-def Test2(_input, zemb, matcher, corrector, STOP_WORDS, df, structures, idx):
+def Test(_input, zemb, matcher, corrector, STOP_WORDS, df, structures, idx):
     """
     Tüm input verisini işleyip sonuçları DataFrame'e kaydeder
     
@@ -1589,13 +1159,6 @@ if __name__ == "__main__":
         çözüm_açıklama_info,
         çözüm_açıklama_to_cause_code
     )
-    
-    structures = arızaları_işle_v4_morphosemantic(
-        df,
-        config.cause_code_şebeke_unsuru_path,
-        zemb,
-        dokunma
-    )
 
     _input = pd.read_excel(config.input_concatted_path)
     
@@ -1634,11 +1197,6 @@ if __name__ == "__main__":
         ))
     
     matcher = IDBasedCategoryMatcher(df, zemb, structures)
-    
-    result = matcher.predict(
-    user_input="kesici açıldı",
-    çözüm_açıklama="YG Sigorta Atığı Tespit Edildi"  # YENİ!
-)
     
     Test(_input, zemb, corrector, matcher)
     
