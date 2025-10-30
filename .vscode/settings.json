@@ -1,0 +1,15 @@
+{
+    // IPython kullan (Spyder gibi)
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.executeInFileDir": true,
+    "python.terminal.launchArgs": ["-m", "IPython", "--no-banner"],
+    
+    // F9 ile seçimi çalıştır
+    "jupyter.interactiveWindow.textEditor.executeSelection": true,
+    
+    // Değişkenleri göster (Spyder Variable Explorer gibi)
+    "jupyter.variableExplorerHeight": 300,
+    
+    // Sonuçları hemen göster
+    "python.terminal.focusAfterLaunch": false
+}
