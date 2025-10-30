@@ -20,12 +20,12 @@ from collections import defaultdict
 from ZemberekClient import ZemberekClient
 from Fonksiyonlar import *
 import pandas as pd
-from idBasedCategoryMatcher_v4 import IDBasedCategoryMatcher
+from idBasedCategoryMatcher import IDBasedCategoryMatcher
 import json
 from config import NLPConfig
 from Levenshtein import distance
 import sys
-from arıza_işleme_v2 import *
+from arıza_işleme import *
 import random
 from tqdm import tqdm
 import re
@@ -1197,9 +1197,7 @@ if __name__ == "__main__":
         ))
     
     matcher = IDBasedCategoryMatcher(df, zemb, structures)
-    
-    Test(_input, zemb, corrector, matcher)
-    
+        
     final_df = process_all_data(
         _input=_input,
         zemb=zemb,

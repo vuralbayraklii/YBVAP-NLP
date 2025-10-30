@@ -1,13 +1,22 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed Oct 15 16:00:41 2025
+Morfosemantik Arıza Analiz Sistemi v3
 
-@author: vural.bayrakli
+Bu modül, arıza metinlerini morfosemantik analiz ederek yapılandırılmış bir
+veri yapısı oluşturur. Temel özellikler:
+
+1. Morfosemantik Token: Lemma + POS + Olumsuzluk bilgisi
+2. ArızaStructures: Tüm mapping'leri tutan ana veri yapısı
+3. Akıllı olumsuzluk tespiti (mastar ve emir formlarını ayırt eder)
+4. Çözüm Açıklama → Kategori/Unsur/Kök Neden/Cause Code mapping'leri
+
+Mapping Formatı:
+- lemma2id: Sadece kökler kaydedilir (örn: "yanmak", "haberleşmemek")
+- Olumsuz tokenler olumsuz eki ile kaydedilir (örn: "haberleşmemek")
 """
 
 from dataclasses import dataclass, field
-from collections import defaultdict
 from typing import Dict, List, Set, Optional
+from collections import defaultdict
 import pandas as pd
 from tqdm import tqdm
 
@@ -70,20 +79,31 @@ class MorphosemanticToken:
     
     def __eq__(self, other):
         return self.to_key() == other.to_key()
-
-
+    
 @dataclass
 class ArızaStructures:
     """
     Morfosemantik bilgiyle zenginleştirilmiş arıza yapıları
     """
     # ✨ Morfosemantik ID mappings
-    token_to_id: Dict[str, int] = field(default_factory=dict)  # "kapamak_Verb_NEG" → ID
+    token_to_id: Dict[str, int] = field(default_factory=dict)  # "kapamak_Verb_NEG" → ID (internal)
     id_to_token: Dict[int, MorphosemanticToken] = field(default_factory=dict)
     
-    # Geriye uyumluluk için
-    lemma2id: Dict[str, int] = field(default_factory=dict)
-    id2lemma: Dict[int, str] = field(default_factory=dict)
+    # Ana mapping: Sadece kökler (olumsuz ise olumsuz haliyle)
+    lemma2id: Dict[str, int] = field(default_factory=dict)  # "yanmak" → ID, "haberleşmemek" → ID
+    id2lemma: Dict[int, str] = field(default_factory=dict)  # ID → "yanmak", ID → "haberleşmemek"
+    
+    # Çözüm Açıklama --> Kök Neden
+    çözüm_açıklama_to_kök_neden: Dict[str, str] = field(default_factory=dict) # YENİ EKLENDİ
+    
+    # Çözüm Açıklama --> Kategori
+    çözüm_açıklama_to_kategori: Dict[str, str] = field(default_factory=dict) # YENİ EKLENDİ
+    
+    # Çözüm Açıklama --> Şebeke Unsuru
+    çözüm_açıklama_to_unsur: Dict[str, str] = field(default_factory=dict) # YENİ EKLENDİ
+    
+    # Çözüm Açıklama --> Cause Code
+    çözüm_açıklama_to_cause_code: Dict[str, str] = field(default_factory=dict) # YENİ EKLENDİ
     
     # Cause Code → Şebeke Unsuru mapping
     cause_code_to_unsur: Dict[str, str] = field(default_factory=dict)
@@ -111,6 +131,144 @@ class ArızaStructures:
     # İstatistikler
     category_stats: Dict[str, Dict] = field(default_factory=dict)
     unsur_stats: Dict[str, Dict] = field(default_factory=dict)
+
+
+def tr_lower(text: str) -> str:
+    """
+    Türkçe karakterleri koruyarak küçük harfe çevir
+    
+    Args:
+        text: Input string
+    
+    Returns:
+        Lowercase string
+    """
+    if pd.isna(text):
+        return ""
+    
+    # Türkçe karakter dönüşümleri
+    replacements = {
+        'İ': 'i',
+        'I': 'ı',
+        'Ğ': 'ğ',
+        'Ü': 'ü',
+        'Ş': 'ş',
+        'Ö': 'ö',
+        'Ç': 'ç'
+    }
+    
+    result = str(text)
+    for old, new in replacements.items():
+        result = result.replace(old, new)
+    
+    return result.lower()
+
+
+def fuzzy_match(word: str, dictionary: List[str], threshold: int = 2) -> Optional[str]:
+    """
+    Fuzzy matching ile en yakın kelimeyi bul
+    
+    Args:
+        word: Aranacak kelime
+        dictionary: Kelime listesi
+        threshold: Maksimum Levenshtein mesafesi
+    
+    Returns:
+        En yakın kelime veya None
+    """
+    try:
+        from Levenshtein import distance
+    except ImportError:
+        # Levenshtein yoksa basit bir fallback
+        return None
+    
+    best_match = None
+    best_distance = float('inf')
+    
+    for candidate in dictionary:
+        d = distance(word.lower(), candidate.lower())
+        if d < best_distance and d <= threshold:
+            best_distance = d
+            best_match = candidate
+    
+    return best_match
+
+
+def is_valid_token(token: MorphosemanticToken) -> bool:
+    """
+    Token'in geçerli olup olmadığını kontrol et
+    
+    Args:
+        token: MorphosemanticToken
+    
+    Returns:
+        True if valid, False otherwise
+    """
+    # Noktalama ve sayıları filtrele
+    if token.pos in ["Punc", "Num", "Unknown"]:
+        return False
+    
+    # Çok kısa lemma'ları filtrele
+    if len(token.lemma) < 2:
+        return False
+    
+    return True
+
+
+def get_morphosemantic_id(
+    token: MorphosemanticToken, 
+    structures: ArızaStructures, 
+    auto_create: bool = True
+) -> Optional[int]:
+    """
+    Token için ID al (varsa döndür, yoksa oluştur)
+    
+    ÖNEMLI: Sadece display_lemma kullanılır (POS bilgisi ID'ye dahil değil)
+    - "yanmak" (Noun) ve "yanmak" (Verb) → Aynı ID
+    - "haberleşmek" (olumlu) ve "haberleşmemek" (olumsuz) → Farklı ID
+    
+    Args:
+        token: MorphosemanticToken
+        structures: ArızaStructures instance
+        auto_create: Yeni ID oluşturulsun mu?
+    
+    Returns:
+        Token ID veya None
+    """
+    # Display lemma'yı al (olumsuz ise olumsuz haliyle)
+    display_lemma = token.to_display_lemma()
+    
+    # Önce lemma2id'de var mı bak
+    if display_lemma in structures.lemma2id:
+        existing_id = structures.lemma2id[display_lemma]
+        
+        # Internal mapping'i de güncelle (aynı lemma farklı POS'larla gelebilir)
+        token_key = token.to_key()
+        if token_key not in structures.token_to_id:
+            structures.token_to_id[token_key] = existing_id
+            # id_to_token'da sadece ilk görüleni sakla
+            if existing_id not in structures.id_to_token:
+                structures.id_to_token[existing_id] = token
+        
+        return existing_id
+    
+    # Yoksa ve auto_create açıksa oluştur
+    if auto_create:
+        # Yeni ID oluştur
+        new_id = len(structures.lemma2id)
+        
+        # Kaydet - SADECE display_lemma kullan
+        structures.lemma2id[display_lemma] = new_id
+        structures.id2lemma[new_id] = display_lemma
+        
+        # Internal mapping'i de kaydet (tam bilgi için)
+        token_key = token.to_key()
+        structures.token_to_id[token_key] = new_id
+        structures.id_to_token[new_id] = token
+        
+        return new_id
+    
+    return None
 
 
 def detect_true_negation(morphemes: List[str], pos: str) -> bool:
@@ -215,151 +373,117 @@ def process_text_with_context_smart(text: str, zemb) -> List[MorphosemanticToken
         return tokens
         
     except Exception as e:
-        print(f"⚠️ Analiz hatası: {text} - {e}")
-        return [
-            MorphosemanticToken(
-                lemma=tr_lower(word),
-                pos="Unknown",
-                is_negative=False,
-                morphemes=[],
-                surface_form=word
-            )
-            for word in text.split()
-        ]
+        print(f"⚠️ Analiz hatası: {text} → {e}")
+        return []
 
 
-def get_morphosemantic_id(token: MorphosemanticToken, structures: ArızaStructures, 
-                          auto_create: bool = True) -> Optional[int]:
-    """
-    Morfosemantik token için ID al veya oluştur
-    
-    Args:
-        token: MorphosemanticToken
-        structures: ArızaStructures
-        auto_create: Yoksa yeni ID oluştur mu?
-    
-    Returns:
-        ID veya None
-    """
-    key = token.to_key()
-    
-    if key in structures.token_to_id:
-        return structures.token_to_id[key]
-    
-    if auto_create:
-        new_id = len(structures.token_to_id) + 1
-        structures.token_to_id[key] = new_id
-        structures.id_to_token[new_id] = token
-        
-        # Görüntüleme lemma'sını lemma2id'ye ekle
-        display_lemma = token.to_display_lemma()
-        if display_lemma not in structures.lemma2id:
-            structures.lemma2id[display_lemma] = new_id
-            structures.id2lemma[new_id] = display_lemma
-        
-        return new_id
-    
-    return None
-
-
-def is_valid_token(token: MorphosemanticToken) -> bool:
-    """Token geçerli mi kontrol et"""
-    if not token.lemma or token.lemma == "UNK":
-        return False
-    
-    turkish_punctuation = '!"#$%&\'()*+,.:;<=>?@[\\]^_`{|}~'
-    if token.lemma in turkish_punctuation or all(c in turkish_punctuation for c in token.lemma):
-        return False
-    
-    return True
-
-
-def fuzzy_match(word: str, candidates: List[str], threshold: int = 3) -> Optional[str]:
-    """Fuzzy matching"""
-    if len(candidates) == 0:
-        return None
-    
-    from Levenshtein import distance
-    
-    best_match = None
-    min_dist = float("inf")
-    
-    for candidate in candidates:
-        dist = distance(candidate, word)
-        if dist < min_dist:
-            min_dist = dist
-            best_match = candidate
-    
-    return best_match if min_dist <= threshold else None
-
-
-def load_cause_code_mapping(cause_code_path: str) -> Dict[str, str]:
-    """
-    Cause Code → Şebeke Unsuru mapping'i yükle
-    """
-    df = pd.read_excel(cause_code_path)
-    df.columns = df.columns.str.strip()
-    
-    mapping = {}
-    for _, row in df.iterrows():
-        cause_code = str(row['cause code']).strip()
-        sebeke_unsuru = str(row['Şebeke Unsuru']).strip()
-        
-        if pd.notna(cause_code):
-            if pd.isna(sebeke_unsuru) or sebeke_unsuru == "" or sebeke_unsuru == "-":
-                mapping[cause_code] = "-"
-            else:
-                mapping[cause_code] = sebeke_unsuru
-    
-    print(f"✅ {len(mapping)} cause code mapping yüklendi")
-    
-    global_count = sum(1 for v in mapping.values() if v == "-")
-    filtered_count = len(mapping) - global_count
-    
-    print(f"   - {filtered_count} filtreli (spesifik şebeke unsuru)")
-    print(f"   - {global_count} global (tüm kategorilerde arama)")
-    
-    return mapping
-
-
-def tr_lower(text):
-    """Türkçe karakterlere duyarlı küçük harf"""
-    if pd.isna(text):
-        return ""
-    return str(text).replace('I', 'ı').replace('İ', 'i').lower()
-
-
-def arızaları_işle_v4_morphosemantic(
+def build_morphosemantic_structures_v3(
     arizalar_df: pd.DataFrame,
-    cause_code_df_path: str,
     zemb,
-    dokunma: List[str] = None
+    cause_code_df_path: str = None,
+    dokunma=None,
+    çözüm_açıklama_info_df: pd.DataFrame = None,
+    çözüm_açıklama_to_cause_code_df: pd.DataFrame = None
 ) -> ArızaStructures:
     """
-    Arıza verilerini morfosemantik analizle işle - V4 (Ambiguity fix)
-    
-    ✅ Her zaman TAM phrase/keyword'ü birlikte analiz et
-    ✅ Inf2 (mastar) ve Imp+Neg (olumsuz emir) NEG olarak işaretlenmiyor
-    ✅ Sadece zaman ekli olumsuz fiiller (Past/Pres/Fut) NEG
+    Morfosemantik analiz + ArızaStructures oluştur
     
     Args:
-        arizalar_df: Arıza verileri (Key Phrase, Keywords, Şebeke Unsuru, Arıza Kategorisi)
-        cause_code_df_path: Cause code mapping Excel path
+        arizalar_df: Ana arıza DataFrame'i (Key Phrase, Keywords, Kategori, vs)
         zemb: Zemberek analyzer
-        dokunma: Fuzzy match için kelime listesi (opsiyonel)
+        cause_code_df_path: Cause Code → Şebeke Unsuru mapping dosyası (Excel/CSV)
+        dokunma: Fuzzy matching için dictionary (opsiyonel)
+        çözüm_açıklama_info_df: Çözüm Açıklama bilgilerini içeren DataFrame
+            Kolonlar: ['Çözüm Açıklama', 'Şebeke Unsuru', 'Arıza Kategorisi', 'Arıza Kök-Neden']
+        çözüm_açıklama_to_cause_code_df: Çözüm Açıklama → Cause Code mapping DataFrame
+            Kolonlar: ['cause code', 'Çözüm Açıklama']
     
     Returns:
-        ArızaStructures
+        ArızaStructures instance
     """
+    
+    print("🚀 Morfosemantik işleme başlıyor...")
     structures = ArızaStructures()
     
-    # 1. Cause Code mapping'i yükle
-    structures.cause_code_to_unsur = load_cause_code_mapping(cause_code_df_path)
+    if dokunma is None:
+        dokunma = {}
     
-    print("\n🔧 Morfosemantik ID yapıları oluşturuluyor (akıllı olumsuzluk tespiti)...")
+    # === Cause Code → Şebeke Unsuru mapping'ini yükle ===
+    if cause_code_df_path:
+        print("   📋 Cause Code → Şebeke Unsuru mapping yükleniyor...")
+        
+        try:
+            if cause_code_df_path.endswith('.csv'):
+                cause_code_df = pd.read_csv(cause_code_df_path)
+            else:
+                cause_code_df = pd.read_excel(cause_code_df_path)
+            
+            # Cause Code kolonunu bul (farklı isimlerde olabilir)
+            cause_code_col = None
+            unsur_col = None
+            
+            for col in cause_code_df.columns:
+                col_lower = col.lower()
+                if 'cause' in col_lower and 'code' in col_lower:
+                    cause_code_col = col
+                if 'şebeke' in col_lower and 'unsur' in col_lower:
+                    unsur_col = col
+            
+            if cause_code_col and unsur_col:
+                for _, row in cause_code_df.iterrows():
+                    cause_code = row[cause_code_col]
+                    unsur = row[unsur_col]
+                    
+                    if pd.notna(cause_code) and pd.notna(unsur):
+                        structures.cause_code_to_unsur[cause_code] = unsur
+                
+                print(f"   ✅ {len(structures.cause_code_to_unsur)} Cause Code → Şebeke Unsuru mapping yüklendi")
+            else:
+                print(f"   ⚠️ Cause Code veya Şebeke Unsuru kolonu bulunamadı!")
+                print(f"      Mevcut kolonlar: {cause_code_df.columns.tolist()}")
+                
+        except Exception as e:
+            print(f"   ⚠️ Cause Code dosyası yüklenemedi: {e}")
     
-    # === ADIM 1: Tüm metinleri topla ===
+    # === YENİ EKLEME: Çözüm Açıklama mapping'lerini doldur ===
+    if çözüm_açıklama_info_df is not None:
+        print("   📋 Çözüm Açıklama bilgileri yükleniyor...")
+        
+        for _, row in çözüm_açıklama_info_df.iterrows():
+            çözüm_açıklama = row['Çözüm Açıklama']
+            
+            if pd.notna(çözüm_açıklama):
+                # Çözüm Açıklama → Şebeke Unsuru
+                if pd.notna(row['Şebeke Unsuru']):
+                    structures.çözüm_açıklama_to_unsur[çözüm_açıklama] = row['Şebeke Unsuru']
+                
+                # Çözüm Açıklama → Arıza Kategorisi
+                if pd.notna(row['Arıza Kategorisi']):
+                    structures.çözüm_açıklama_to_kategori[çözüm_açıklama] = row['Arıza Kategorisi']
+                
+                # Çözüm Açıklama → Arıza Kök-Neden
+                if pd.notna(row['Arıza Kök-Neden']):
+                    structures.çözüm_açıklama_to_kök_neden[çözüm_açıklama] = row['Arıza Kök-Neden']
+        
+        print(f"   ✅ {len(structures.çözüm_açıklama_to_unsur)} Çözüm Açıklama → Şebeke Unsuru")
+        print(f"   ✅ {len(structures.çözüm_açıklama_to_kategori)} Çözüm Açıklama → Kategori")
+        print(f"   ✅ {len(structures.çözüm_açıklama_to_kök_neden)} Çözüm Açıklama → Kök Neden")
+    
+    if çözüm_açıklama_to_cause_code_df is not None:
+        print("   📋 Çözüm Açıklama → Cause Code mapping yükleniyor...")
+        
+        for _, row in çözüm_açıklama_to_cause_code_df.iterrows():
+            çözüm_açıklama = row['Çözüm Açıklama']
+            cause_code = row['cause code']
+            
+            if pd.notna(çözüm_açıklama) and pd.notna(cause_code):
+                structures.çözüm_açıklama_to_cause_code[çözüm_açıklama] = cause_code
+        
+        print(f"   ✅ {len(structures.çözüm_açıklama_to_cause_code)} Çözüm Açıklama → Cause Code")
+    
+    # === ADIM 1: Tüm unique phrase/keyword'leri topla ===
     all_texts = set()
+    
     for _, row in arizalar_df.iterrows():
         key_phrase = tr_lower(row['Key Phrase'])
         keywords = tr_lower(row['Keywords'])
@@ -404,18 +528,15 @@ def arızaları_işle_v4_morphosemantic(
             if is_valid_token(token):
                 get_morphosemantic_id(token, structures, auto_create=True)
     
-    print(f"   ✅ {len(structures.token_to_id)} benzersiz morfosemantik token bulundu")
-    print(f"   ✅ {len(structures.lemma2id)} benzersiz display lemma bulundu")
+    print(f"   ✅ {len(structures.lemma2id)} benzersiz kök (lemma) bulundu")
+    print(f"   ℹ️  {len(structures.token_to_id)} farklı POS/NEG kombinasyonu")
     
     # İstatistikler
-    neg_count = sum(1 for t in structures.id_to_token.values() if t.is_negative)
-    inf2_count = sum(1 for t in structures.id_to_token.values() if "Inf2" in t.morphemes)
-    imp_neg_count = sum(1 for t in structures.id_to_token.values() 
-                        if "Neg" in t.morphemes and "Imp" in t.morphemes and not t.is_negative)
+    neg_count = sum(1 for lemma in structures.lemma2id.keys() 
+                    if any(neg_marker in lemma for neg_marker in ['memek', 'mamak', '_NEG']))
     
-    print(f"   📊 Gerçek olumsuz (zaman ekli): {neg_count}")
-    print(f"   📊 Mastar (Inf2): {inf2_count}")
-    print(f"   📊 Olumsuz emir (Imp+Neg, NEG değil): {imp_neg_count}")
+    print(f"   📊 Olumsuz kökler: {neg_count}")
+    print(f"   📊 Olumlu kökler: {len(structures.lemma2id) - neg_count}")
     
     # === ADIM 3: Text → ID list helper (cache kullan) ===
     def text_to_morphosemantic_id_list(text: str) -> List[int]:
@@ -555,18 +676,72 @@ def arızaları_işle_v4_morphosemantic(
     print(f"   - {len(structures.category_phrase_ids)} kategori")
     print(f"   - {len(seen_phrases)} unique phrase")
     print(f"   - {len(seen_keywords)} unique keyword")
-    print(f"   - {len(structures.token_to_id)} morfosemantik token")
+    print(f"   - {len(structures.lemma2id)} benzersiz kök (lemma)")
     
     # === ADIM 6: Morfosemantik dağılım istatistikleri ===
-    print("\n📊 Morfosemantik İstatistikler:")
+    print("\n📊 Kök (Lemma) Özeti:")
+    print(f"   Toplam benzersiz kök: {len(structures.lemma2id)}")
     
+    # Olumsuz kök sayısı
+    neg_count = sum(1 for lemma in structures.lemma2id.keys() 
+                    if any(neg_marker in lemma for neg_marker in ['memek', 'mamak', '_NEG']))
+    print(f"   Olumsuz kökler: {neg_count}")
+    print(f"   Olumlu kökler: {len(structures.lemma2id) - neg_count}")
+    
+    # POS dağılımı (internal mapping'den)
+    print("\n📊 POS Dağılımı (internal):")
     pos_counts = defaultdict(int)
-    
     for token in structures.id_to_token.values():
         pos_counts[token.pos] += 1
     
-    print(f"   POS Dağılımı:")
-    for pos, count in sorted(pos_counts.items(), key=lambda x: x[1], reverse=True):
+    for pos, count in sorted(pos_counts.items(), key=lambda x: x[1], reverse=True)[:10]:
         print(f"     - {pos}: {count}")
     
     return structures
+
+
+# === KULLANIM ÖRNEĞİ ===
+"""
+# DataFrame'leri yükle
+arizalar_df = pd.read_excel('arizalar.xlsx')
+çözüm_açıklama_info = pd.read_excel('cozum_aciklama_info.xlsx')
+çözüm_açıklama_to_cause_code = pd.read_excel('cozum_aciklama_cause_code.xlsx')
+
+# Structures oluştur
+structures = build_morphosemantic_structures_v3(
+    arizalar_df=arizalar_df,
+    zemb=zemb,
+    cause_code_df_path='cause_code_sebeke_unsuru.xlsx',  # Cause Code → Şebeke Unsuru
+    dokunma=dokunma_dict,
+    çözüm_açıklama_info_df=çözüm_açıklama_info,
+    çözüm_açıklama_to_cause_code_df=çözüm_açıklama_to_cause_code
+)
+
+# === Mapping Örnekleri ===
+
+# 1. Lemma → ID (sadece kökler, olumsuz ise olumsuz haliyle)
+print(structures.lemma2id)
+# Çıktı: {'yanmak': 1, 'kırmak': 2, 'haberleşmemek': 3, ...}
+
+# 2. ID → Lemma
+print(structures.id2lemma[3])
+# Çıktı: 'haberleşmemek'
+
+# 3. Çözüm Açıklama mapping'leri
+unsur = structures.çözüm_açıklama_to_unsur.get('belirli bir çözüm açıklama')
+kategori = structures.çözüm_açıklama_to_kategori.get('belirli bir çözüm açıklama')
+kök_neden = structures.çözüm_açıklama_to_kök_neden.get('belirli bir çözüm açıklama')
+cause_code = structures.çözüm_açıklama_to_cause_code.get('belirli bir çözüm açıklama')
+
+# 4. Cause code'dan şebeke unsurunu bul
+unsur_from_cause = structures.cause_code_to_unsur.get('123')
+
+# === Detaylı Token Bilgisi İçin ===
+# Internal mapping'den tam bilgi alınabilir:
+token = structures.id_to_token[3]
+print(f"Lemma: {token.lemma}")
+print(f"Display Lemma: {token.to_display_lemma()}")  # 'haberleşmemek'
+print(f"POS: {token.pos}")
+print(f"Is Negative: {token.is_negative}")
+print(f"Morphemes: {token.morphemes}")
+"""
