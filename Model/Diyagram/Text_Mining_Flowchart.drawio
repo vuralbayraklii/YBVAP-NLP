@@ -1,0 +1,212 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" version="28.1.0">
+  <diagram name="Sayfa -1" id="uRlfnRqGl6LmNXcA3xxL">
+    <mxGraphModel dx="2505" dy="954" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-23" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-1" target="AmqRF0Es_lidxjtDCJUp-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-1" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Input a karşılık gelen &lt;b&gt;Çözüm Açıklama&lt;/b&gt; yı bul. Arıza Kök-Neden verisini çek&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="290" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-2" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Algoritma Çalışma Diyagramı&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="299" y="20" width="230" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-3" value="Veriler" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="30" y="60" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-4" target="AmqRF0Es_lidxjtDCJUp-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-4" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;cause_code_şebeke_unsuru.xlsx&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="-20" y="90" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-5" value="&lt;span style=&quot;font-size: 8px;&quot;&gt;cause code - şebeke unsuru ikililerini tutar&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="180" y="90" width="170" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-7">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="135" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-7" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Çözüm_Açıklama_Şebeke_Unsuru.xlsx&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="-20" y="120" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-12" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Çözüm açıklama - şebeke unsuru ikililerini tutar.&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="180" y="120" width="190" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-13">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="165" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-13" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Outage_İs_Emirleri_Malzeme.xlsx&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="-20" y="150" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-15" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Cause code, çözüm açıklama, description, yorum verileri tutulur.&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="180" y="150" width="250" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-16">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="195" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-16" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Arıza_Kategorisi_Tablosu.xlsx&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="-15" y="180" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-18" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Key phrases, Keywords, Şebeke Unsuru ve Arıza Kategorisi verileri tutulur.&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="180" y="178" width="290" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-19" target="AmqRF0Es_lidxjtDCJUp-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-19" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Çözüm_Açıklama_Şebeke_Unsuru.xlsx&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="85" y="300" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-21" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;kullanarak&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="245" y="290" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-29" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-22" target="AmqRF0Es_lidxjtDCJUp-28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-40" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-22" target="AmqRF0Es_lidxjtDCJUp-41">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="390" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-22" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Var mı&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="350" y="370" width="80" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-24" target="AmqRF0Es_lidxjtDCJUp-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-24" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Input al&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="220" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-28" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;İlgili input için Arıza Kök-Neden bulundu. İşlemi bitir&lt;/font&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="490" y="375" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-30" value="Evet" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="425" y="368" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-59" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-31" target="AmqRF0Es_lidxjtDCJUp-58">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-31" value="&lt;span style=&quot;font-size: 8px;&quot;&gt;&lt;b&gt;Şebeke Unsuru &lt;/b&gt;verisini çek&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="175" y="555" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-33" value="Hayır" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="414" y="430" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-66" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-34" target="AmqRF0Es_lidxjtDCJUp-55">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-34" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Outage_İs_Emirleri_Malzeme.xlsx&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="130" y="675" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-36" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;kullanarak&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="275" y="666" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-43" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-41" target="AmqRF0Es_lidxjtDCJUp-42">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-41" value="&lt;span style=&quot;font-size: 8px;&quot;&gt;&lt;b&gt;Arıza Kategorisi &lt;/b&gt;verisini çek&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="470" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-49" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-42" target="AmqRF0Es_lidxjtDCJUp-48">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-53" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-42" target="AmqRF0Es_lidxjtDCJUp-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-42" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Var mı&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="195" y="455" width="80" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-48" value="&lt;span style=&quot;font-size: 8px; text-wrap-mode: nowrap;&quot;&gt;İlgili input için &lt;b&gt;Arıza Kategorisi &lt;/b&gt;bulundu&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="20" y="465" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-50" value="Evet" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="160" y="460" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-54" value="Hayır" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="240" y="525" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-70" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-55" target="AmqRF0Es_lidxjtDCJUp-69">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-55" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;&lt;b&gt;Çözüm Açıklama&lt;/b&gt; ya karşılık gelen &lt;b&gt;Cause Code&lt;/b&gt; yi bul&lt;/font&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="350" y="670" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-62" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-58" target="AmqRF0Es_lidxjtDCJUp-61">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-64" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-58" target="AmqRF0Es_lidxjtDCJUp-55">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-58" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Var mı&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="370" y="535" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-61" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Bütün arıza kategorilerini kullanarak kategoriyi belirle&lt;/font&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="510" y="545" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-63" value="Hayır" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="445" y="548" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-65" value="Evet" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="400" y="620" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-72" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-69" target="AmqRF0Es_lidxjtDCJUp-71">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-69" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;&lt;b&gt;Çözüm Açıklama &lt;/b&gt;ya ve&amp;nbsp;&lt;b&gt;Cause Code&lt;/b&gt; ye karşılık gelen &lt;b&gt;Şebeke Unsuru&lt;/b&gt; nu bul.&lt;/font&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="350" y="750" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-74" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-71" target="AmqRF0Es_lidxjtDCJUp-73">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-77" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-71" target="AmqRF0Es_lidxjtDCJUp-76">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-71" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Aynı &lt;b&gt;Şebeke Unsuru&lt;/b&gt; mu&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="350" y="850" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-80" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.542;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-73" target="AmqRF0Es_lidxjtDCJUp-79">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="1040" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="210" y="1040" />
+              <mxPoint x="420" y="1040" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-73" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;&lt;b&gt;Şebeke Unsuru&lt;/b&gt;na karşılık gelen arızalar kümesinde &lt;b&gt;Arıza Kategorisi&lt;/b&gt; arama gerçekleştir&lt;/font&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="150" y="860" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-75" value="Evet" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="289" y="866" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-85" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="AmqRF0Es_lidxjtDCJUp-76">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="1040" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="610" y="985" />
+              <mxPoint x="611" y="985" />
+              <mxPoint x="611" y="1040" />
+              <mxPoint x="480" y="1040" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-76" value="&lt;font style=&quot;font-size: 8px;&quot;&gt;Bütün arızalar içinde&amp;nbsp;&lt;/font&gt;&lt;b style=&quot;font-size: 8px;&quot;&gt;Arıza Kategorisi &lt;/b&gt;&lt;span style=&quot;font-size: 8px;&quot;&gt;arama gerçekleştir&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="550" y="860" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-78" value="Hayır" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="485" y="866" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AmqRF0Es_lidxjtDCJUp-79" value="Bitir" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="355" y="1070" width="120" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
