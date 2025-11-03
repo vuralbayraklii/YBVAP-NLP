@@ -108,6 +108,11 @@ class ArızaStructures:
     # Cause Code → Şebeke Unsuru mapping
     cause_code_to_unsur: Dict[str, str] = field(default_factory=dict)
     
+    # Cause Code mappings (YENİ EKLENENLER)
+    cause_code_to_unsur: Dict[str, str] = field(default_factory=dict)
+    cause_code_to_kategori: Dict[str, str] = field(default_factory=dict)  # YENİ
+    cause_code_to_kök_neden: Dict[str, str] = field(default_factory=dict)  # YENİ
+ 
     # Şebeke Unsuru → Kategoriler
     unsur_to_categories: Dict[str, Set[str]] = field(default_factory=lambda: defaultdict(set))
     
@@ -380,10 +385,11 @@ def process_text_with_context_smart(text: str, zemb) -> List[MorphosemanticToken
 def build_morphosemantic_structures_v3(
     arizalar_df: pd.DataFrame,
     zemb,
-    cause_code_df_path: str = None,
+    cause_code_df_path: str = None,  # DEPRECATED - artık kullanılmayacak
     dokunma=None,
     çözüm_açıklama_info_df: pd.DataFrame = None,
-    çözüm_açıklama_to_cause_code_df: pd.DataFrame = None
+    çözüm_açıklama_to_cause_code_df: pd.DataFrame = None,
+    cause_code_info_df: pd.DataFrame = None  # YENİ PARAMETRE
 ) -> ArızaStructures:
     """
     Morfosemantik analiz + ArızaStructures oluştur
@@ -407,6 +413,84 @@ def build_morphosemantic_structures_v3(
     
     if dokunma is None:
         dokunma = {}
+
+    # === YENİ: Cause Code bilgilerini yükle ===
+    if cause_code_info_df is not None:
+        print("   📋 Cause Code bilgileri yükleniyor...")
+        
+        for _, row in cause_code_info_df.iterrows():
+            if 'Cause Code' in cause_code_info_df.columns:
+                cause_code = row['Cause Code']
+            elif 'cause code' in cause_code_info_df.columns:
+                cause_code = row['cause code']
+            else:
+                # Fallback: case-insensitive column search for "cause code"
+                matched_col = None
+                for col in cause_code_info_df.columns:
+                    if str(col).strip().lower() == 'cause code':
+                        matched_col = col
+                        break
+                cause_code = row[matched_col] if matched_col is not None else None
+            
+            if pd.notna(cause_code):
+                # Cause Code → Şebeke Unsuru
+                if pd.notna(row['Şebeke Unsuru']):
+                    structures.cause_code_to_unsur[cause_code] = row['Şebeke Unsuru']
+                
+                # Cause Code → Arıza Kategorisi
+                if pd.notna(row['Arıza Kategorisi']):
+                    if not hasattr(structures, 'cause_code_to_kategori'):
+                        structures.cause_code_to_kategori = {}
+                    structures.cause_code_to_kategori[cause_code] = row['Arıza Kategorisi']
+                
+                # Cause Code → Arıza Kök-Neden
+                if pd.notna(row['Arıza Kök-Neden']):
+                    if not hasattr(structures, 'cause_code_to_kök_neden'):
+                        structures.cause_code_to_kök_neden = {}
+                    structures.cause_code_to_kök_neden[cause_code] = row['Arıza Kök-Neden']
+        
+        print(f"   ✅ {len(structures.cause_code_to_unsur)} Cause Code → Şebeke Unsuru")
+        if hasattr(structures, 'cause_code_to_kategori'):
+            print(f"   ✅ {len(structures.cause_code_to_kategori)} Cause Code → Kategori")
+        if hasattr(structures, 'cause_code_to_kök_neden'):
+            print(f"   ✅ {len(structures.cause_code_to_kök_neden)} Cause Code → Kök Neden")
+    
+    # === Çözüm Açıklama mapping'lerini doldur ===
+    if çözüm_açıklama_info_df is not None:
+        print("   📋 Çözüm Açıklama bilgileri yükleniyor...")
+        
+        for _, row in çözüm_açıklama_info_df.iterrows():
+            çözüm_açıklama = row['Çözüm Açıklama']
+            
+            if pd.notna(çözüm_açıklama):
+                # Çözüm Açıklama → Şebeke Unsuru
+                if pd.notna(row['Şebeke Unsuru']):
+                    structures.çözüm_açıklama_to_unsur[çözüm_açıklama] = row['Şebeke Unsuru']
+                
+                # Çözüm Açıklama → Arıza Kategorisi
+                if pd.notna(row['Arıza Kategorisi']):
+                    structures.çözüm_açıklama_to_kategori[çözüm_açıklama] = row['Arıza Kategorisi']
+                
+                # Çözüm Açıklama → Arıza Kök-Neden
+                if pd.notna(row['Arıza Kök-Neden']):
+                    structures.çözüm_açıklama_to_kök_neden[çözüm_açıklama] = row['Arıza Kök-Neden']
+        
+        print(f"   ✅ {len(structures.çözüm_açıklama_to_unsur)} Çözüm Açıklama → Şebeke Unsuru")
+        print(f"   ✅ {len(structures.çözüm_açıklama_to_kategori)} Çözüm Açıklama → Kategori")
+        print(f"   ✅ {len(structures.çözüm_açıklama_to_kök_neden)} Çözüm Açıklama → Kök Neden")
+    
+    if çözüm_açıklama_to_cause_code_df is not None:
+        print("   📋 Çözüm Açıklama → Cause Code mapping yükleniyor...")
+        
+        for _, row in çözüm_açıklama_to_cause_code_df.iterrows():
+            çözüm_açıklama = row['Çözüm Açıklama']
+            cause_code = row['cause code']
+            
+            if pd.notna(çözüm_açıklama) and pd.notna(cause_code):
+                structures.çözüm_açıklama_to_cause_code[çözüm_açıklama] = cause_code
+        
+        print(f"   ✅ {len(structures.çözüm_açıklama_to_cause_code)} Çözüm Açıklama → Cause Code")
+    
     
     # === Cause Code → Şebeke Unsuru mapping'ini yükle ===
     if cause_code_df_path:

@@ -1149,7 +1149,8 @@ if __name__ == "__main__":
     
     çözüm_açıklama_to_cause_code = pd.read_excel(config.çözüm_açıklama_to_cause_code_path)    
     
-    çözüm_açıklama_info = pd.read_excel(config.çözüm_açıklama_info_path)
+    çözüm_açıklama_info = pd.read_excel(config.çözüm_açıklama_info_path, sheet_name="Çözüm_Açıklama_Şebeke_Unsuru")
+    cause_code_info = pd.read_excel(config.çözüm_açıklama_info_path, sheet_name="cause_code_Şebeke_Unsuru")
     
     structures = build_morphosemantic_structures_v3(
         df,
@@ -1157,7 +1158,8 @@ if __name__ == "__main__":
         config.cause_code_şebeke_unsuru_path,
         dokunma,
         çözüm_açıklama_info,
-        çözüm_açıklama_to_cause_code
+        çözüm_açıklama_to_cause_code,
+        cause_code_info
     )
 
     _input = pd.read_excel(config.input_concatted_path)
