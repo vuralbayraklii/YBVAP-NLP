@@ -30,6 +30,11 @@ class IDBasedCategoryMatcher:
         self.çözüm_açıklama_to_unsur = structures.çözüm_açıklama_to_unsur
         self.çözüm_açıklama_to_cause_code = structures.çözüm_açıklama_to_cause_code
         
+        # ✨ Cause Code mappings
+        self.cause_code_to_unsur = structures.cause_code_to_unsur
+        self.cause_code_to_kategori = getattr(structures, 'cause_code_to_kategori', {})  # YENİ
+        self.cause_code_to_kök_neden = getattr(structures, 'cause_code_to_kök_neden', {})  # YENİ
+        
         # Global yapılar
         self.category_phrase_ids = structures.category_phrase_ids
         self.category_keyword_ids = structures.category_keyword_ids
@@ -387,24 +392,26 @@ class IDBasedCategoryMatcher:
         return predictions
 
     def predict(
-        self,
-        user_input: str,
-        cause_code: str = None,
-        çözüm_açıklama: str = None,
-        top_k: int = 5,
-        min_confidence: float = 0.1
-    ):
+    self,
+    user_input: str,
+    cause_code: str = None,
+    çözüm_açıklama: str = None,
+    top_k: int = 5,
+    min_confidence: float = 0.1
+):
         """
-        ✨ Çözüm Açıklama öncelikli tahmin sistemi (IDF Skorlamalı)
+        ✨ Hiyerarşik Öncelik Sıralamalı Tahmin Sistemi (IDF Skorlamalı)
         
-        Akış:
-        1. Çözüm Açıklama → Kök Neden var mı? → Varsa döndür
-        2. Çözüm Açıklama → Kategori var mı? → Varsa döndür
-        3. Çözüm Açıklama & Cause Code → Şebeke Unsurları karşılaştır
-           - Aynı ise → Filtered arama (sadece o şebeke unsuru)
-           - Farklı ise → Global arama (tüm kategoriler)
-           - "-" ise → Global arama
-        4. IDF skorları ile ağırlıklandırılmış arama yap
+        Öncelik Akışı:
+        1. Çözüm Açıklama → Kök Neden var mı? → Varsa DÖNDÜR ✅
+        2. Çözüm Açıklama → Kategori var mı? → Varsa DÖNDÜR ✅
+        3. Cause Code → Kök Neden var mı? → Varsa DÖNDÜR ✅
+        4. Cause Code → Kategori var mı? → Varsa DÖNDÜR ✅
+        5. Şebeke Unsuru Bazlı Arama:
+        a) Çözüm Açıklama → Şebeke Unsuru var mı? → Varsa o şebeke unsuru altında ara
+        b) Yoksa Cause Code → Şebeke Unsuru var mı? → Varsa o şebeke unsuru altında ara
+        c) Yoksa Global arama (tüm kategoriler)
+        6. IDF skorları ile ağırlıklandırılmış arama yap
         
         Args:
             user_input: Kullanıcı metni
@@ -418,19 +425,21 @@ class IDBasedCategoryMatcher:
         print("🔍 TAHMİN SÜRECİ BAŞLIYOR")
         print("="*60)
         
-        # === AŞAMA 1: Çözüm Açıklama → Kök Neden Kontrolü ===
+        # === AŞAMA 1: Çözüm Açıklama Kontrolleri ===
         if çözüm_açıklama:
             print(f"\n📋 Çözüm Açıklama: {çözüm_açıklama}")
             
             # 1.1. Kök Neden var mı?
             kök_neden = self.çözüm_açıklama_to_kök_neden.get(çözüm_açıklama)
             if kök_neden and kök_neden != "-":
-                print(f"✅ KÖK NEDEN BULUNDU: {kök_neden}")
+                print(f"✅ [AŞAMA 1.1] KÖK NEDEN BULUNDU: {kök_neden}")
                 return {
                     'input': user_input,
                     'çözüm_açıklama': çözüm_açıklama,
+                    'cause_code': cause_code,
                     'kök_neden': kök_neden,
-                    'method': 'direct_from_kök_neden',
+                    'method': 'direct_from_çözüm_açıklama_kök_neden',
+                    'stage': '1.1',
                     'predictions': [{
                         'kategori': kök_neden,
                         'confidence': 1.0,
@@ -439,17 +448,19 @@ class IDBasedCategoryMatcher:
                     }]
                 }
             else:
-                print("❌ Kök Neden bulunamadı")
+                print("❌ [AŞAMA 1.1] Kök Neden bulunamadı")
             
             # 1.2. Kategori var mı?
             kategori = self.çözüm_açıklama_to_kategori.get(çözüm_açıklama)
             if kategori and kategori != "-":
-                print(f"✅ KATEGORİ BULUNDU: {kategori}")
+                print(f"✅ [AŞAMA 1.2] KATEGORİ BULUNDU: {kategori}")
                 return {
                     'input': user_input,
                     'çözüm_açıklama': çözüm_açıklama,
+                    'cause_code': cause_code,
                     'kategori': kategori,
-                    'method': 'direct_from_kategori',
+                    'method': 'direct_from_çözüm_açıklama_kategori',
+                    'stage': '1.2',
                     'predictions': [{
                         'kategori': kategori,
                         'confidence': 1.0,
@@ -458,112 +469,133 @@ class IDBasedCategoryMatcher:
                     }]
                 }
             else:
-                print("❌ Kategori bulunamadı")
+                print("❌ [AŞAMA 1.2] Kategori bulunamadı")
             
-            # 1.3. Çözüm Açıklama'dan Cause Code al
-            cause_code_from_cozum = self.çözüm_açıklama_to_cause_code.get(çözüm_açıklama)
-            if cause_code_from_cozum:
-                print(f"✅ Çözüm Açıklama'dan Cause Code bulundu: {cause_code_from_cozum}")
-                if cause_code and cause_code != cause_code_from_cozum:
-                    print(f"⚠️  Uyarı: Parametre cause_code ({cause_code}) farklı, "
-                          f"Çözüm Açıklama'dan gelen ({cause_code_from_cozum}) kullanılıyor")
-                cause_code = cause_code_from_cozum
-            else:
-                print("❌ Çözüm Açıklama'dan Cause Code bulunamadı")
+            print("➡️  Çözüm Açıklama'dan direkt sonuç alınamadı, Cause Code kontrolleri yapılacak...")
         
-        # === AŞAMA 2: Cause Code ve Şebeke Unsuru İşleme ===
+        # === AŞAMA 2: Cause Code Kontrolleri ===
+        if cause_code:
+            print(f"\n📋 Cause Code: {cause_code}")
+            
+            # 2.1. Cause Code → Kök Neden var mı?
+            if hasattr(self, 'cause_code_to_kök_neden'):
+                kök_neden = self.cause_code_to_kök_neden.get(cause_code)
+                if kök_neden and kök_neden != "-":
+                    print(f"✅ [AŞAMA 2.1] KÖK NEDEN BULUNDU: {kök_neden}")
+                    return {
+                        'input': user_input,
+                        'çözüm_açıklama': çözüm_açıklama,
+                        'cause_code': cause_code,
+                        'kök_neden': kök_neden,
+                        'method': 'direct_from_cause_code_kök_neden',
+                        'stage': '2.1',
+                        'predictions': [{
+                            'kategori': kök_neden,
+                            'confidence': 1.0,
+                            'source': 'Cause Code → Kök Neden mapping',
+                            'match_summary': {'direct_mapping': 1}
+                        }]
+                    }
+                else:
+                    print("❌ [AŞAMA 2.1] Cause Code'dan Kök Neden bulunamadı")
+            else:
+                print("❌ [AŞAMA 2.1] cause_code_to_kök_neden mapping yok")
+            
+            # 2.2. Cause Code → Kategori var mı?
+            if hasattr(self, 'cause_code_to_kategori'):
+                kategori = self.cause_code_to_kategori.get(cause_code)
+                if kategori and kategori != "-":
+                    print(f"✅ [AŞAMA 2.2] KATEGORİ BULUNDU: {kategori}")
+                    return {
+                        'input': user_input,
+                        'çözüm_açıklama': çözüm_açıklama,
+                        'cause_code': cause_code,
+                        'kategori': kategori,
+                        'method': 'direct_from_cause_code_kategori',
+                        'stage': '2.2',
+                        'predictions': [{
+                            'kategori': kategori,
+                            'confidence': 1.0,
+                            'source': 'Cause Code → Kategori mapping',
+                            'match_summary': {'direct_mapping': 1}
+                        }]
+                    }
+                else:
+                    print("❌ [AŞAMA 2.2] Cause Code'dan Kategori bulunamadı")
+            else:
+                print("❌ [AŞAMA 2.2] cause_code_to_kategori mapping yok")
+            
+            print("➡️  Cause Code'dan da direkt sonuç alınamadı, Şebeke Unsuru bazlı aramaya geçiliyor...")
+        
+        # === AŞAMA 3: Şebeke Unsuru Bazlı Arama ===
         print("\n" + "-"*60)
-        print("⚙️  AŞAMA 2: Cause Code ve Şebeke Unsuru Kontrolü")
+        print("⚙️  AŞAMA 3: Şebeke Unsuru Belirleme")
         print("-"*60)
         
-        if not cause_code:
-            print("❌ Cause Code yok → GLOBAL ARAMA yapılacak")
-            search_all_categories = True
-            sebeke_unsuru = None
-            relevant_categories = set(self.category_phrase_ids.keys())
-        else:
-            print(f"✅ Cause Code: {cause_code}")
-            
-            # 2.1. Cause Code → Şebeke Unsuru
-            sebeke_unsuru_from_cc = self.cause_code_to_unsur.get(cause_code)
-            print(f"   Cause Code → Şebeke Unsuru: {sebeke_unsuru_from_cc or 'BULUNAMADI'}")
-            
-            # 2.2. Çözüm Açıklama → Şebeke Unsuru
-            sebeke_unsuru_from_cozum = None
-            if çözüm_açıklama:
-                sebeke_unsuru_from_cozum = self.çözüm_açıklama_to_unsur.get(çözüm_açıklama)
-                print(f"   Çözüm Açıklama → Şebeke Unsuru: {sebeke_unsuru_from_cozum or 'BULUNAMADI'}")
-            
-            # 2.3. Şebeke Unsurlarını karşılaştır
-            if sebeke_unsuru_from_cc and sebeke_unsuru_from_cozum:
-                if sebeke_unsuru_from_cc == sebeke_unsuru_from_cozum:
-                    # ✅ AYNI - Şebeke unsuru "-" mi kontrol et
-                    if sebeke_unsuru_from_cc == "-":
-                        print(f"⚠️  Şebeke Unsuru '-' → GLOBAL ARAMA yapılacak (tüm kategorilerde)")
-                        sebeke_unsuru = None
-                        search_all_categories = True
-                    else:
-                        print(f"✅ Şebeke Unsurları AYNI: {sebeke_unsuru_from_cc}")
-                        print(f"   → FİLTRELİ ARAMA yapılacak (sadece {sebeke_unsuru_from_cc} altında)")
-                        sebeke_unsuru = sebeke_unsuru_from_cc
-                        search_all_categories = False
-                else:
-                    print(f"⚠️  Şebeke Unsurları FARKLI:")
-                    print(f"   - Cause Code'dan: {sebeke_unsuru_from_cc}")
-                    print(f"   - Çözüm Açıklama'dan: {sebeke_unsuru_from_cozum}")
-                    print(f"   → GLOBAL ARAMA yapılacak (tüm kategorilerde)")
-                    sebeke_unsuru = None
-                    search_all_categories = True
-            elif sebeke_unsuru_from_cc:
-                if sebeke_unsuru_from_cc == "-":
-                    print(f"⚠️  Şebeke Unsuru '-' → GLOBAL ARAMA yapılacak")
-                    sebeke_unsuru = None
-                    search_all_categories = True
-                else:
-                    print(f"✅ Cause Code'dan Şebeke Unsuru: {sebeke_unsuru_from_cc}")
-                    print(f"   → FİLTRELİ ARAMA yapılacak")
-                    sebeke_unsuru = sebeke_unsuru_from_cc
-                    search_all_categories = False
-            elif sebeke_unsuru_from_cozum:
-                if sebeke_unsuru_from_cozum == "-":
-                    print(f"⚠️  Şebeke Unsuru '-' → GLOBAL ARAMA yapılacak")
-                    sebeke_unsuru = None
-                    search_all_categories = True
-                else:
-                    print(f"✅ Çözüm Açıklama'dan Şebeke Unsuru: {sebeke_unsuru_from_cozum}")
-                    print(f"   → FİLTRELİ ARAMA yapılacak")
-                    sebeke_unsuru = sebeke_unsuru_from_cozum
-                    search_all_categories = False
-            else:
-                print("❌ Şebeke Unsuru bulunamadı → GLOBAL ARAMA yapılacak")
-                sebeke_unsuru = None
-                search_all_categories = True
-            
-            # 2.4. İlgili kategorileri belirle
-            if not search_all_categories:
-                relevant_categories = self.unsur_to_categories.get(sebeke_unsuru, set())
-                
-                if not relevant_categories:
-                    print(f"⚠️  Uyarı: '{sebeke_unsuru}' için kategori bulunamadı → GLOBAL ARAMA'ya geçiliyor")
-                    search_all_categories = True
-                    relevant_categories = set(self.category_phrase_ids.keys())
-            else:
-                relevant_categories = set(self.category_phrase_ids.keys())
+        sebeke_unsuru = None
+        sebeke_unsuru_source = None
         
-        # === AŞAMA 3: Text İşleme ===
+        # 3.1. Çözüm Açıklama → Şebeke Unsuru
+        if çözüm_açıklama:
+            sebeke_unsuru_from_cozum = self.çözüm_açıklama_to_unsur.get(çözüm_açıklama)
+            if sebeke_unsuru_from_cozum and sebeke_unsuru_from_cozum != "-":
+                print(f"✅ [AŞAMA 3.1] Çözüm Açıklama'dan Şebeke Unsuru bulundu: {sebeke_unsuru_from_cozum}")
+                sebeke_unsuru = sebeke_unsuru_from_cozum
+                sebeke_unsuru_source = 'çözüm_açıklama'
+            else:
+                print("❌ [AŞAMA 3.1] Çözüm Açıklama'dan Şebeke Unsuru bulunamadı veya '-'")
+        
+        # 3.2. Çözüm Açıklama'dan bulunamadıysa Cause Code → Şebeke Unsuru
+        if not sebeke_unsuru and cause_code:
+            sebeke_unsuru_from_cc = self.cause_code_to_unsur.get(cause_code)
+            if sebeke_unsuru_from_cc and sebeke_unsuru_from_cc != "-":
+                print(f"✅ [AŞAMA 3.2] Cause Code'dan Şebeke Unsuru bulundu: {sebeke_unsuru_from_cc}")
+                sebeke_unsuru = sebeke_unsuru_from_cc
+                sebeke_unsuru_source = 'cause_code'
+            else:
+                print("❌ [AŞAMA 3.2] Cause Code'dan Şebeke Unsuru bulunamadı veya '-'")
+        
+        # 3.3. Şebeke Unsuru'na göre arama kapsamını belirle
+        if sebeke_unsuru:
+            print(f"\n✅ Şebeke Unsuru belirlendi: {sebeke_unsuru} (kaynak: {sebeke_unsuru_source})")
+            
+            # Bu şebeke unsuru altındaki kategorileri al
+            relevant_categories = self.unsur_to_categories.get(sebeke_unsuru, set())
+            
+            if relevant_categories:
+                print(f"   → FİLTRELİ ARAMA yapılacak")
+                print(f"   → {len(relevant_categories)} kategori taranacak")
+                search_mode = 'filtered'
+            else:
+                print(f"⚠️  Uyarı: '{sebeke_unsuru}' için kategori bulunamadı")
+                print(f"   → GLOBAL ARAMA'ya geçiliyor")
+                relevant_categories = set(self.category_phrase_ids.keys())
+                search_mode = 'global'
+                sebeke_unsuru = None
+                sebeke_unsuru_source = None
+        else:
+            print("❌ [AŞAMA 3.3] Şebeke Unsuru bulunamadı")
+            print("   → GLOBAL ARAMA yapılacak (tüm kategoriler)")
+            relevant_categories = set(self.category_phrase_ids.keys())
+            search_mode = 'global'
+        
+        # === AŞAMA 4: Text İşleme ===
         print("\n" + "-"*60)
-        print("⚙️  AŞAMA 3: Metin Analizi")
+        print("⚙️  AŞAMA 4: Metin Analizi")
         print("-"*60)
         
         print(f"\n🔍 Arama Kapsamı:")
+        print(f"   Çözüm Açıklama: {çözüm_açıklama or 'YOK'}")
         print(f"   Cause Code: {cause_code or 'YOK'}")
-        print(f"   Şebeke Unsuru: {sebeke_unsuru or 'YOK'}")
-        print(f"   Arama Modu: {'🌍 GLOBAL (Tüm kategoriler)' if search_all_categories else f'🎯 FİLTRELİ ({sebeke_unsuru})'}")
+        print(f"   Şebeke Unsuru: {sebeke_unsuru or 'YOK'} {f'(kaynak: {sebeke_unsuru_source})' if sebeke_unsuru_source else ''}")
+        print(f"   Arama Modu: {'🌍 GLOBAL (Tüm kategoriler)' if search_mode == 'global' else f'🎯 FİLTRELİ ({sebeke_unsuru})'}")
         print(f"   İlgili Kategoriler: {len(relevant_categories)} adet")
-        if not search_all_categories:
-            print(f"   Kategoriler: {list(relevant_categories)[:10]}{'...' if len(relevant_categories) > 10 else ''}")
+        if search_mode == 'filtered' and len(relevant_categories) <= 10:
+            print(f"   Kategoriler: {list(relevant_categories)}")
+        elif search_mode == 'filtered':
+            print(f"   Kategoriler: {list(relevant_categories)[:10]}... (+{len(relevant_categories)-10} daha)")
         
-        # 3.1. Input'u ID'lere çevir
+        # 4.1. Input'u ID'lere çevir
         input_ids, input_lemmas, input_words = self.text_to_lemma_ids(user_input)
         input_id_set = set(input_ids)
         
@@ -584,17 +616,19 @@ class IDBasedCategoryMatcher:
                 'çözüm_açıklama': çözüm_açıklama,
                 'cause_code': cause_code,
                 'sebeke_unsuru': sebeke_unsuru,
-                'search_mode': 'global' if search_all_categories else 'filtered',
+                'sebeke_unsuru_source': sebeke_unsuru_source,
+                'search_mode': search_mode,
+                'stage': '4',
                 'error': 'Geçerli kelime bulunamadı',
                 'predictions': []
             }
         
-        # === AŞAMA 4: Arama ===
+        # === AŞAMA 5: Arama ===
         print("\n" + "-"*60)
-        print("⚙️  AŞAMA 4: Eşleşme Arama (IDF Skorlamalı)")
+        print("⚙️  AŞAMA 5: Eşleşme Arama (IDF Skorlamalı)")
         print("-"*60)
         
-        if search_all_categories:
+        if search_mode == 'global':
             exact, subset, partial, single_token = self._find_matches_global(
                 input_ids, 
                 input_id_set
@@ -613,9 +647,9 @@ class IDBasedCategoryMatcher:
         print(f"   Partial matches: {len(partial)}")
         print(f"   Single token matches: {len(single_token)}")
         
-        # === AŞAMA 5: IDF ile Skorlama ===
+        # === AŞAMA 6: IDF ile Skorlama ===
         print("\n" + "-"*60)
-        print("⚙️  AŞAMA 5: IDF Ağırlıklı Skorlama ve Sıralama")
+        print("⚙️  AŞAMA 6: IDF Ağırlıklı Skorlama ve Sıralama")
         print("-"*60)
         
         category_scores = self.calculate_category_scores_with_idf(
@@ -638,10 +672,10 @@ class IDBasedCategoryMatcher:
         print(f"\n✅ Top {len(sorted_categories)} Tahmin (IDF Ağırlıklı):")
         for i, (cat, info) in enumerate(sorted_categories, 1):
             print(f"   {i}. {cat}: {info['normalized_confidence']:.4f} "
-                  f"(E:{info['exact_count']}, S:{info['subset_count']}, "
-                  f"P:{info['partial_count']}, ST:{info['single_token_count']})")
+                f"(E:{info['exact_count']}, S:{info['subset_count']}, "
+                f"P:{info['partial_count']}, ST:{info['single_token_count']})")
         
-        # === AŞAMA 6: Çıktı ===
+        # === AŞAMA 7: Çıktı ===
         predictions = self._format_predictions(sorted_categories)
         
         return {
@@ -649,14 +683,16 @@ class IDBasedCategoryMatcher:
             'çözüm_açıklama': çözüm_açıklama,
             'cause_code': cause_code,
             'sebeke_unsuru': sebeke_unsuru,
-            'search_mode': 'global' if search_all_categories else 'filtered',
+            'sebeke_unsuru_source': sebeke_unsuru_source,
+            'search_mode': search_mode,
             'method': 'text_matching_with_idf',
+            'stage': '5-6',
             'input_ids': input_ids,
             'input_lemmas': input_lemmas,
             'input_words': input_words,
             'search_scope': {
                 'total_categories': len(relevant_categories),
-                'categories': list(relevant_categories)[:10] if not search_all_categories else ['TÜM KATEGORİLER']
+                'categories': list(relevant_categories)[:10] if search_mode == 'filtered' else ['TÜM KATEGORİLER']
             },
             'total_exact_matches': len(exact),
             'total_subset_matches': len(subset),
