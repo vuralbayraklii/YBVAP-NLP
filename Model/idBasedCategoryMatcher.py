@@ -2,7 +2,8 @@ import numpy as np
 import math
 import pandas as pd
 from collections import defaultdict, Counter
-from typing import List, Set, Dict, Tuple
+from typing import List, Optional, Set, Dict, Tuple
+from NLPv0_3 import BeamSearchCorrector
 
 class IDBasedCategoryMatcher:
     def __init__(self, df, zemb, structures):
@@ -115,15 +116,25 @@ class IDBasedCategoryMatcher:
     
     def tr_lower(self, text):
         """Türkçe karakterlere duyarlı lowercase"""
-        if pd.isna(text):
+        # Eğer text bir array/list ise, string'e çevir
+        if isinstance(text, (list, np.ndarray)):
+            text = ' '.join(str(t) for t in text)
+        
+        # None veya NaN kontrolü
+        if text is None or (isinstance(text, float) and pd.isna(text)):
             return ""
+        
+        # String'e çevir
+        text = str(text)
+        
         replacements = {
             'I': 'ı', 'İ': 'i', 'Ğ': 'ğ', 'Ü': 'ü',
             'Ş': 'ş', 'Ö': 'ö', 'Ç': 'ç'
         }
-        text = str(text)
+        
         for old, new in replacements.items():
             text = text.replace(old, new)
+        
         return text.lower()
     
     def get_lemma(self, word):
@@ -208,6 +219,10 @@ class IDBasedCategoryMatcher:
     
     def text_to_lemma_ids(self, text):
         """Metni lemma ID'lerine çevir"""
+
+        if isinstance(text, (list, np.ndarray)):
+            text = ' '.join(str(t) for t in text)
+
         text = self.tr_lower(text)
         words = text.split()
         ids = []
@@ -223,7 +238,9 @@ class IDBasedCategoryMatcher:
                 ids.append(self.lemma2id[lemma])
         
         return ids, lemmas, words
+
     
+    # ... devamı
     def _check_sequential(self, input_ids, target_list):
         """Target list'in input_ids içinde sıralı olup olmadığını kontrol et"""
         if not target_list:
@@ -396,6 +413,7 @@ class IDBasedCategoryMatcher:
     user_input: str,
     cause_code: str = None,
     çözüm_açıklama: str = None,
+    corrector: Optional[BeamSearchCorrector] = None,
     top_k: int = 5,
     min_confidence: float = 0.1
 ):
@@ -429,6 +447,9 @@ class IDBasedCategoryMatcher:
         if çözüm_açıklama:
             print(f"\n📋 Çözüm Açıklama: {çözüm_açıklama}")
             
+            # 1.0 Şebeke Unsuru var mı?
+            şebeke_unsuru = self.çözüm_açıklama_to_unsur.get(çözüm_açıklama)
+           
             # 1.1. Kök Neden var mı?
             kök_neden = self.çözüm_açıklama_to_kök_neden.get(çözüm_açıklama)
             if kök_neden and kök_neden != "-":
@@ -436,6 +457,7 @@ class IDBasedCategoryMatcher:
                 return {
                     'input': user_input,
                     'çözüm_açıklama': çözüm_açıklama,
+                    'şebeke_unsuru': şebeke_unsuru,
                     'cause_code': cause_code,
                     'kök_neden': kök_neden,
                     'method': 'direct_from_çözüm_açıklama_kök_neden',
@@ -452,11 +474,13 @@ class IDBasedCategoryMatcher:
             
             # 1.2. Kategori var mı?
             kategori = self.çözüm_açıklama_to_kategori.get(çözüm_açıklama)
+            
             if kategori and kategori != "-":
                 print(f"✅ [AŞAMA 1.2] KATEGORİ BULUNDU: {kategori}")
                 return {
                     'input': user_input,
                     'çözüm_açıklama': çözüm_açıklama,
+                    'şebeke_unsuru': şebeke_unsuru,
                     'cause_code': cause_code,
                     'kategori': kategori,
                     'method': 'direct_from_çözüm_açıklama_kategori',
@@ -477,6 +501,9 @@ class IDBasedCategoryMatcher:
         if cause_code:
             print(f"\n📋 Cause Code: {cause_code}")
             
+            # 2.0 Şebeke Unsuru var mı?
+            şebeke_unsuru = self.cause_code_to_unsur.get(cause_code)
+
             # 2.1. Cause Code → Kök Neden var mı?
             if hasattr(self, 'cause_code_to_kök_neden'):
                 kök_neden = self.cause_code_to_kök_neden.get(cause_code)
@@ -486,6 +513,7 @@ class IDBasedCategoryMatcher:
                         'input': user_input,
                         'çözüm_açıklama': çözüm_açıklama,
                         'cause_code': cause_code,
+                        'şebeke_unsuru': şebeke_unsuru,
                         'kök_neden': kök_neden,
                         'method': 'direct_from_cause_code_kök_neden',
                         'stage': '2.1',
@@ -510,6 +538,7 @@ class IDBasedCategoryMatcher:
                         'input': user_input,
                         'çözüm_açıklama': çözüm_açıklama,
                         'cause_code': cause_code,
+                        'şebeke_unsuru': şebeke_unsuru,
                         'kategori': kategori,
                         'method': 'direct_from_cause_code_kategori',
                         'stage': '2.2',
@@ -595,8 +624,12 @@ class IDBasedCategoryMatcher:
         elif search_mode == 'filtered':
             print(f"   Kategoriler: {list(relevant_categories)[:10]}... (+{len(relevant_categories)-10} daha)")
         
+        
         # 4.1. Input'u ID'lere çevir
-        input_ids, input_lemmas, input_words = self.text_to_lemma_ids(user_input)
+
+        processed_input = corrector._process_input(user_input) if corrector else user_input
+
+        input_ids, input_lemmas, input_words = self.text_to_lemma_ids(processed_input)
         input_id_set = set(input_ids)
         
         print(f"\n📝 Input: {user_input}")
@@ -612,7 +645,7 @@ class IDBasedCategoryMatcher:
         
         if not input_ids:
             return {
-                'input': user_input,
+                'input': processed_input,
                 'çözüm_açıklama': çözüm_açıklama,
                 'cause_code': cause_code,
                 'sebeke_unsuru': sebeke_unsuru,
@@ -700,6 +733,7 @@ class IDBasedCategoryMatcher:
             'total_single_token_matches': len(single_token),
             'predictions': predictions
         }
+
 
     def _find_matches_global(
         self, 
