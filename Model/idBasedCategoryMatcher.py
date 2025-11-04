@@ -278,14 +278,14 @@ class IDBasedCategoryMatcher:
             score_info = self.get_keyword_score(token_id)
             return score_info['idf']
         
-        # Exact matches (en yüksek ağırlık)
+        # Exact matches (en yüksek ağırlık - 10 puan base)
         for match in exact:
             cat = match['kategori']
             
             # ✨ IDF ağırlıklı confidence
             token_weights = [get_idf_weight(tid) for tid in match['matched_ids']]
             avg_idf = sum(token_weights) / len(token_weights) if token_weights else 1.0
-            weighted_confidence = match['confidence'] * avg_idf
+            weighted_confidence = 10.0 * len(match['matched_ids']) * avg_idf  # ✨ Phrase uzunluğu önemli
             
             category_scores[cat]['confidence'] += weighted_confidence
             category_scores[cat]['exact_count'] += 1
@@ -300,13 +300,13 @@ class IDBasedCategoryMatcher:
             if not category_scores[cat]['best_match_type']:
                 category_scores[cat]['best_match_type'] = 'exact'
         
-        # Subset matches
+        # Subset matches (yüksek ağırlık - 7 puan base)
         for match in subset:
             cat = match['kategori']
             
             token_weights = [get_idf_weight(tid) for tid in match['matched_ids']]
             avg_idf = sum(token_weights) / len(token_weights) if token_weights else 1.0
-            weighted_confidence = match['confidence'] * avg_idf * 0.9
+            weighted_confidence = 7.0 * len(match['matched_ids']) * avg_idf  # ✨ Phrase uzunluğu önemli
             
             category_scores[cat]['confidence'] += weighted_confidence
             category_scores[cat]['subset_count'] += 1
@@ -321,13 +321,14 @@ class IDBasedCategoryMatcher:
             if not category_scores[cat]['best_match_type']:
                 category_scores[cat]['best_match_type'] = 'subset'
         
-        # Partial matches
+        # Partial matches (orta ağırlık - coverage'a göre)
         for match in partial:
             cat = match['kategori']
             
             token_weights = [get_idf_weight(tid) for tid in match['matched_ids']]
             avg_idf = sum(token_weights) / len(token_weights) if token_weights else 1.0
-            weighted_confidence = match['confidence'] * avg_idf * 0.7
+            coverage = match.get('coverage', 0.5)
+            weighted_confidence = 5.0 * coverage * len(match['matched_ids']) * avg_idf
             
             category_scores[cat]['confidence'] += weighted_confidence
             category_scores[cat]['partial_count'] += 1
@@ -336,53 +337,79 @@ class IDBasedCategoryMatcher:
                 'type': 'partial',
                 'text': match['text'],
                 'confidence': match['confidence'],
-                'coverage': match.get('coverage', 0),
+                'coverage': coverage,
                 'idf_weight': avg_idf
             })
             
             if not category_scores[cat]['best_match_type']:
                 category_scores[cat]['best_match_type'] = 'partial'
         
-        # Single token matches (en düşük ağırlık ama IDF çok önemli!)
+        # Single token matches (DÜŞ��K ağırlık - 0.3 puan base)
+        # ✨ Çok fazla single token olmasını cezalandır
+        single_token_by_category = defaultdict(list)
         for match in single_token:
-            cat = match['kategori']
-            
-            token_id = match['matched_ids'][0]
-            idf_weight = get_idf_weight(token_id)
-            
-            # ✨ Nadir tokenler için daha yüksek confidence
-            weighted_confidence = match['confidence'] * idf_weight * 0.5
-            
-            category_scores[cat]['confidence'] += weighted_confidence
-            category_scores[cat]['single_token_count'] += 1
-            category_scores[cat]['total_matches'] += 1
-            category_scores[cat]['match_details'].append({
-                'type': 'single_token',
-                'token': match['token'],
-                'text': match['text'],
-                'confidence': match['confidence'],
-                'idf_weight': idf_weight
-            })
-            
-            if not category_scores[cat]['best_match_type']:
-                category_scores[cat]['best_match_type'] = 'single_token'
+            single_token_by_category[match['kategori']].append(match)
+        
+        for cat, matches in single_token_by_category.items():
+            # ✨ Diminishing returns: Her ek single token daha az katkı sağlar
+            for idx, match in enumerate(matches):
+                token_id = match['matched_ids'][0]
+                idf_weight = get_idf_weight(token_id)
+                
+                # ✨ Her ek single token için azalan ağırlık (logaritmik)
+                diminishing_factor = 1.0 / (1.0 + math.log(idx + 1))
+                weighted_confidence = 0.3 * idf_weight * diminishing_factor
+                
+                category_scores[cat]['confidence'] += weighted_confidence
+                category_scores[cat]['single_token_count'] += 1
+                category_scores[cat]['total_matches'] += 1
+                category_scores[cat]['match_details'].append({
+                    'type': 'single_token',
+                    'token': match['token'],
+                    'text': match['text'],
+                    'confidence': match['confidence'],
+                    'idf_weight': idf_weight,
+                    'diminishing_factor': diminishing_factor
+                })
+                
+                if not category_scores[cat]['best_match_type']:
+                    category_scores[cat]['best_match_type'] = 'single_token'
         
         return dict(category_scores)
     
     def normalize_scores(self, category_scores):
-        """Skorları [0,1] aralığında normalize et"""
+        """Skorları normalize et - TOPLAM = 1 olacak şekilde"""
         if not category_scores:
             return {}
         
-        max_score = max(info['confidence'] for info in category_scores.values())
-        
-        if max_score == 0:
-            return category_scores
-        
+        # ✨ Kalite filtresi: Sadece single token varsa ve çok fazlaysa cezalandır
         for cat in category_scores:
-            category_scores[cat]['normalized_confidence'] = (
-                category_scores[cat]['confidence'] / max_score
-            )
+            info = category_scores[cat]
+            
+            # Eğer sadece single token varsa ve exact/subset/partial yoksa
+            if (info['exact_count'] == 0 and 
+                info['subset_count'] == 0 and 
+                info['partial_count'] == 0 and
+                info['single_token_count'] > 0):
+                
+                # Single token sayısı fazlaysa daha çok cezalandır
+                penalty = 0.5 if info['single_token_count'] < 5 else 0.3
+                category_scores[cat]['confidence'] *= penalty
+        
+        # ✨ TOPLAM = 1 normalizasyonu
+        total_score = sum(info['confidence'] for info in category_scores.values())
+        
+        if total_score == 0:
+            # Hiç skor yoksa eşit dağıt
+            n = len(category_scores)
+            for cat in category_scores:
+                category_scores[cat]['normalized_confidence'] = 1.0 / n if n > 0 else 0.0
+        else:
+            # Her kategori skorunu toplama böl
+            for cat in category_scores:
+                category_scores[cat]['normalized_confidence'] = (
+                    category_scores[cat]['confidence'] / total_score
+                )
         
         return category_scores
     

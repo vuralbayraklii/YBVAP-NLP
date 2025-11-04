@@ -1,3 +1,11 @@
+from datetime import datetime
+from tqdm import tqdm
+import pandas as pd
+import traceback
+
+
+
+
 def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structures):
     """
     ✨ IDF SKORLAMALI - Tüm input verisini işleyip sonuçları DataFrame'e kaydeder
@@ -51,32 +59,6 @@ def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structure
             tokens_raw = row["Concatted"]
             cause_code = row["cause code"]
             çözüm_açıklama = row.get("Çözüm Açıklama", None)  # ✨ .get() ile güvenli erişim
-            
-            # # Tokenize
-            # tokenized = zemb.tokenize(tokens_raw)
-            
-            # # Token işleme
-            # final_tokens = []
-            # for token, token_type in tokenized:
-            #     if token_type in {'Word', 'WordWithSymbol', 'UnknownWord'}:
-            #         if token_type in {'WordWithSymbol', 'UnknownWord'}:
-            #             parts = token.replace('/', '-').split('-')
-            #             final_tokens.extend([tr_lower(p) for p in parts if p])
-            #         else:
-            #             final_tokens.append(tr_lower(token))
-            
-            # tokens = final_tokens
-            
-            # # Spell correction - correct() beam list döndürür
-            # result_beam = corrector.correct(tokens, verbose=False)
-            
-            # # İlk beam'den tokenları al ve stop words filtrele
-            # if result_beam and len(result_beam) > 0:
-            #     corrected_tokens = result_beam[0].out_tokens
-            #     filtered_tokens = [t for t in corrected_tokens if t not in stop_words_set]
-            # else:
-            #     # Düzeltme başarısızsa orijinal tokenları kullan
-            #     filtered_tokens = [t for t in tokens if t not in stop_words_set]
             
             # ✨ YENİ: IDF skorlamalı tahmin yap (print'leri bastır)
             import sys
@@ -177,7 +159,7 @@ def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structure
             # ✨ YENİ: Ek bilgiler
             method = result.get('method', 'unknown') if isinstance(result, dict) else 'unknown'
             search_mode = result.get('search_mode', 'N/A') if isinstance(result, dict) else 'N/A'
-            normalized_confidences = [result.get('normalized_confidences', 0.0) for pred in predictions] if predictions else []
+            normalized_confidences = result.get('normalized_confidences', 0.0) if predictions else []
             # Sonucu listeye ekle
             results_list.append({
                 'input_concatted': tokens_raw,
@@ -188,13 +170,11 @@ def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structure
                 'kategori': kategori if kategori else "",
                 'result_best': result_best,
                 'result_full': result_full,
-                'corrected_tokens': processed_input if processed_input else "",
                 'num_predictions': len(predictions) if predictions else 0,
                 'method': method,
                 'search_mode': search_mode,  # ✨ YENİ
                 'confidence': best_confidence,  # ✨ YENİ
                 'normalized_confidences': normalized_confidences,  # ✨ YENİ
-                'raw_confidence_idf': best_raw_confidence,  # ✨ YENİ (IDF skorlu)
             })
             
         except Exception as e:
