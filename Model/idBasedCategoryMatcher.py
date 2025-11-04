@@ -658,7 +658,7 @@ class IDBasedCategoryMatcher:
 
         input_ids, input_lemmas, input_words = self.text_to_lemma_ids(processed_input)
         input_id_set = set(input_ids)
-        
+
         print(f"\n📝 Input: {user_input}")
         print(f"   Kelimeler: {input_words}")
         print(f"   Kökler: {input_lemmas}")
@@ -670,6 +670,8 @@ class IDBasedCategoryMatcher:
             score_info = self.get_keyword_score(lemma_id)
             print(f"   '{lemma}': IDF={score_info['idf']:.3f} ({score_info['num_categories']} kategoride, {score_info['specificity']})")
         
+
+
         if not input_ids:
             return {
                 'input': processed_input,
@@ -697,7 +699,7 @@ class IDBasedCategoryMatcher:
             exact, subset, partial, single_token = self._find_matches_filtered(
                 input_ids, 
                 input_id_set, 
-                sebeke_unsuru,
+                şebeke_unsuru,
                 relevant_categories
             )
         
@@ -738,6 +740,8 @@ class IDBasedCategoryMatcher:
         # === AŞAMA 7: Çıktı ===
         predictions = self._format_predictions(sorted_categories)
 
+        best_category = sorted_categories[0][0] if sorted_categories else None
+
         # ✨ Normalized confidence değerlerini ayrı liste olarak çıkar
         normalized_confidences = [info['normalized_confidence'] for cat, info in sorted_categories]
         raw_confidences = [info['confidence'] for cat, info in sorted_categories]
@@ -749,6 +753,7 @@ class IDBasedCategoryMatcher:
             'sebeke_unsuru': sebeke_unsuru,
             'sebeke_unsuru_source': sebeke_unsuru_source,
             'search_mode': search_mode,
+            'best_category': best_category,
             'method': 'text_matching_with_idf',
             'stage': '5-6',
             'input_ids': input_ids,

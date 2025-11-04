@@ -121,6 +121,8 @@ def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structure
                     sebeke_unsuru = pred.get('sebeke_unsuru', None)
 
                     processed_input = pred.get('input', None)
+
+                    
                     
                     # Raw confidence (IDF skorlu) ekle
                     if raw_confidence > 0:
@@ -160,6 +162,9 @@ def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structure
             method = result.get('method', 'unknown') if isinstance(result, dict) else 'unknown'
             search_mode = result.get('search_mode', 'N/A') if isinstance(result, dict) else 'N/A'
             normalized_confidences = result.get('normalized_confidences', 0.0) if predictions else []
+            raw_confidences = result.get('raw_confidences', 0.0) if predictions else []
+            kategori = result.get('best_category', None)
+
             # Sonucu listeye ekle
             results_list.append({
                 'input_concatted': tokens_raw,
@@ -175,6 +180,7 @@ def process_all_data(_input, zemb, matcher, corrector, STOP_WORDS, df, structure
                 'search_mode': search_mode,  # ✨ YENİ
                 'confidence': best_confidence,  # ✨ YENİ
                 'normalized_confidences': normalized_confidences,  # ✨ YENİ
+                'raw_confidences': raw_confidences,  # ✨ YENİ
             })
             
         except Exception as e:
