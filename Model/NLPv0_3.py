@@ -997,5 +997,6 @@ if __name__ == "__main__":
 
     # Excel olarak kaydet (opsiyonel)
     final_df.to_excel(output_path, index=False, engine='openpyxl')
+    print()
     print(f"💾 Sonuçlar '{output_path}' dosyasına kaydedildi.")
 
