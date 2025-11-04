@@ -688,29 +688,33 @@ class IDBasedCategoryMatcher:
         category_scores = self.calculate_category_scores_with_idf(
             exact, subset, partial, single_token
         )
-        
+
         category_scores = self.normalize_scores(category_scores)
-        
+
         sorted_categories = sorted(
             category_scores.items(),
             key=lambda x: x[1]['normalized_confidence'],
             reverse=True
         )
-        
+
         sorted_categories = [
             (cat, info) for cat, info in sorted_categories
             if info['normalized_confidence'] >= min_confidence
         ][:top_k]
-        
+
         print(f"\n✅ Top {len(sorted_categories)} Tahmin (IDF Ağırlıklı):")
         for i, (cat, info) in enumerate(sorted_categories, 1):
             print(f"   {i}. {cat}: {info['normalized_confidence']:.4f} "
                 f"(E:{info['exact_count']}, S:{info['subset_count']}, "
                 f"P:{info['partial_count']}, ST:{info['single_token_count']})")
-        
+
         # === AŞAMA 7: Çıktı ===
         predictions = self._format_predictions(sorted_categories)
-        
+
+        # ✨ Normalized confidence değerlerini ayrı liste olarak çıkar
+        normalized_confidences = [info['normalized_confidence'] for cat, info in sorted_categories]
+        raw_confidences = [info['confidence'] for cat, info in sorted_categories]
+
         return {
             'input': user_input,
             'çözüm_açıklama': çözüm_açıklama,
@@ -731,6 +735,8 @@ class IDBasedCategoryMatcher:
             'total_subset_matches': len(subset),
             'total_partial_matches': len(partial),
             'total_single_token_matches': len(single_token),
+            'normalized_confidences': normalized_confidences,  # ✨ YENİ
+            'raw_confidences': raw_confidences,  # ✨ YENİ
             'predictions': predictions
         }
 
