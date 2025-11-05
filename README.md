@@ -1,1 +1,4 @@
-v2.1  e göre geliştirmeler yapıldı. Çıktı kısmında eksiklikler giderildi. IDF skorlama ile kategori tespiti sonuçları doğru şekilde excel dosyasına basılacak şekilde güncelleme yapıldı.
+v2.2 ye göre yapılaacak değişiklikler:
+
+- config mimarisinde değişiklikler yapılabilir. 
+- bazı dosya yollarında değişiklik olacak ve buna göre kod güncellenecek.
