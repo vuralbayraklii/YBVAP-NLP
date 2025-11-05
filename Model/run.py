@@ -47,8 +47,6 @@ if __name__ == "__main__":
 
     df = pd.read_excel(config.get_path('arızalar_path'), sheet_name=PATH_GÜNCELLEME["arızalar"]["sheet_name"])
 
-    çözüm_açıklama_to_cause_code = pd.read_excel(config.get_path('çözüm_açıklama_to_cause_code_path'))
-
     # Çözüm Açıklama Şebeke Unsuru verisi yolu güncellemesi
     config.add_path_template(
         'çözüm_açıklama_info_path',
@@ -65,7 +63,7 @@ if __name__ == "__main__":
         config.cause_code_şebeke_unsuru_path,
         dokunma,
         çözüm_açıklama_info,
-        çözüm_açıklama_to_cause_code,
+        None,
         cause_code_info
     )
 

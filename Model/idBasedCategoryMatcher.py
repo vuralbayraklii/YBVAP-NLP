@@ -29,7 +29,6 @@ class IDBasedCategoryMatcher:
         self.çözüm_açıklama_to_kök_neden = structures.çözüm_açıklama_to_kök_neden
         self.çözüm_açıklama_to_kategori = structures.çözüm_açıklama_to_kategori
         self.çözüm_açıklama_to_unsur = structures.çözüm_açıklama_to_unsur
-        self.çözüm_açıklama_to_cause_code = structures.çözüm_açıklama_to_cause_code
         
         # ✨ Cause Code mappings
         self.cause_code_to_unsur = structures.cause_code_to_unsur
