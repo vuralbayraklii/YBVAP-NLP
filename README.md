@@ -1,0 +1,1 @@
+v2.1  e göre geliştirmeler yapıldı. Çıktı kısmında eksiklikler giderildi. IDF skorlama ile kategori tespiti sonuçları doğru şekilde excel dosyasına basılacak şekilde güncelleme yapıldı.
