@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  zemberek:
+    image: vural1/zemberek_improved:latest
+    ports:
+      - "6789:6789"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6789"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  python-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - zemberek
+    environment:
+      - ZEMBEREK_HOST=zemberek
+      - ZEMBEREK_PORT=6789
+    networks:
+      - app-network
+    volumes:
+      - "c:/Users/vural.bayrakli/OneDrive - MRC/İletişim sitesi - MRC2024-104-ADM-GDZ - Yerli Buyuk Veri Analitigi Platformu/05_Proje Çalışmaları/Vural/TextMining/Input Data:/app/data1"  # input verileri ve dokunulmayacak kelimeler
+      - "c:/Users/vural.bayrakli/OneDrive - MRC/İletişim sitesi - MRC2024-104-ADM-GDZ - Yerli Buyuk Veri Analitigi Platformu/05_Proje Çalışmaları/Genel Metodoloji Dokümanları:/app/data2"  # Çözüm açıklama için
+      - ./output:/app/output  # çıktı verileri
+      - ./logs:/app/logs  # İsteğe bağlı
+
+networks:
+  app-network:
+    driver: bridge
+

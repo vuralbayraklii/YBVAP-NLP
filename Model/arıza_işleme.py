@@ -385,10 +385,8 @@ def process_text_with_context_smart(text: str, zemb) -> List[MorphosemanticToken
 def build_morphosemantic_structures_v3(
     arizalar_df: pd.DataFrame,
     zemb,
-    cause_code_df_path: str = None,  # DEPRECATED - artık kullanılmayacak
     dokunma=None,
     çözüm_açıklama_info_df: pd.DataFrame = None,
-    çözüm_açıklama_to_cause_code_df: pd.DataFrame = None,
     cause_code_info_df: pd.DataFrame = None  # YENİ PARAMETRE
 ) -> ArızaStructures:
     """
@@ -479,56 +477,6 @@ def build_morphosemantic_structures_v3(
         print(f"   ✅ {len(structures.çözüm_açıklama_to_kategori)} Çözüm Açıklama → Kategori")
         print(f"   ✅ {len(structures.çözüm_açıklama_to_kök_neden)} Çözüm Açıklama → Kök Neden")
     
-    if çözüm_açıklama_to_cause_code_df is not None:
-        print("   📋 Çözüm Açıklama → Cause Code mapping yükleniyor...")
-        
-        for _, row in çözüm_açıklama_to_cause_code_df.iterrows():
-            çözüm_açıklama = row['Çözüm Açıklama']
-            cause_code = row['cause code']
-            
-            if pd.notna(çözüm_açıklama) and pd.notna(cause_code):
-                structures.çözüm_açıklama_to_cause_code[çözüm_açıklama] = cause_code
-        
-        print(f"   ✅ {len(structures.çözüm_açıklama_to_cause_code)} Çözüm Açıklama → Cause Code")
-    
-    
-    # === Cause Code → Şebeke Unsuru mapping'ini yükle ===
-    if cause_code_df_path:
-        print("   📋 Cause Code → Şebeke Unsuru mapping yükleniyor...")
-        
-        try:
-            if cause_code_df_path.endswith('.csv'):
-                cause_code_df = pd.read_csv(cause_code_df_path)
-            else:
-                cause_code_df = pd.read_excel(cause_code_df_path)
-            
-            # Cause Code kolonunu bul (farklı isimlerde olabilir)
-            cause_code_col = None
-            unsur_col = None
-            
-            for col in cause_code_df.columns:
-                col_lower = col.lower()
-                if 'cause' in col_lower and 'code' in col_lower:
-                    cause_code_col = col
-                if 'şebeke' in col_lower and 'unsur' in col_lower:
-                    unsur_col = col
-            
-            if cause_code_col and unsur_col:
-                for _, row in cause_code_df.iterrows():
-                    cause_code = row[cause_code_col]
-                    unsur = row[unsur_col]
-                    
-                    if pd.notna(cause_code) and pd.notna(unsur):
-                        structures.cause_code_to_unsur[cause_code] = unsur
-                
-                print(f"   ✅ {len(structures.cause_code_to_unsur)} Cause Code → Şebeke Unsuru mapping yüklendi")
-            else:
-                print(f"   ⚠️ Cause Code veya Şebeke Unsuru kolonu bulunamadı!")
-                print(f"      Mevcut kolonlar: {cause_code_df.columns.tolist()}")
-                
-        except Exception as e:
-            print(f"   ⚠️ Cause Code dosyası yüklenemedi: {e}")
-    
     # === YENİ EKLEME: Çözüm Açıklama mapping'lerini doldur ===
     if çözüm_açıklama_info_df is not None:
         print("   📋 Çözüm Açıklama bilgileri yükleniyor...")
@@ -552,19 +500,7 @@ def build_morphosemantic_structures_v3(
         print(f"   ✅ {len(structures.çözüm_açıklama_to_unsur)} Çözüm Açıklama → Şebeke Unsuru")
         print(f"   ✅ {len(structures.çözüm_açıklama_to_kategori)} Çözüm Açıklama → Kategori")
         print(f"   ✅ {len(structures.çözüm_açıklama_to_kök_neden)} Çözüm Açıklama → Kök Neden")
-    
-    if çözüm_açıklama_to_cause_code_df is not None:
-        print("   📋 Çözüm Açıklama → Cause Code mapping yükleniyor...")
-        
-        for _, row in çözüm_açıklama_to_cause_code_df.iterrows():
-            çözüm_açıklama = row['Çözüm Açıklama']
-            cause_code = row['cause code']
-            
-            if pd.notna(çözüm_açıklama) and pd.notna(cause_code):
-                structures.çözüm_açıklama_to_cause_code[çözüm_açıklama] = cause_code
-        
-        print(f"   ✅ {len(structures.çözüm_açıklama_to_cause_code)} Çözüm Açıklama → Cause Code")
-    
+
     # === ADIM 1: Tüm unique phrase/keyword'leri topla ===
     all_texts = set()
     
@@ -782,50 +718,3 @@ def build_morphosemantic_structures_v3(
         print(f"     - {pos}: {count}")
     
     return structures
-
-
-# === KULLANIM ÖRNEĞİ ===
-"""
-# DataFrame'leri yükle
-arizalar_df = pd.read_excel('arizalar.xlsx')
-çözüm_açıklama_info = pd.read_excel('cozum_aciklama_info.xlsx')
-çözüm_açıklama_to_cause_code = pd.read_excel('cozum_aciklama_cause_code.xlsx')
-
-# Structures oluştur
-structures = build_morphosemantic_structures_v3(
-    arizalar_df=arizalar_df,
-    zemb=zemb,
-    cause_code_df_path='cause_code_sebeke_unsuru.xlsx',  # Cause Code → Şebeke Unsuru
-    dokunma=dokunma_dict,
-    çözüm_açıklama_info_df=çözüm_açıklama_info,
-    çözüm_açıklama_to_cause_code_df=çözüm_açıklama_to_cause_code
-)
-
-# === Mapping Örnekleri ===
-
-# 1. Lemma → ID (sadece kökler, olumsuz ise olumsuz haliyle)
-print(structures.lemma2id)
-# Çıktı: {'yanmak': 1, 'kırmak': 2, 'haberleşmemek': 3, ...}
-
-# 2. ID → Lemma
-print(structures.id2lemma[3])
-# Çıktı: 'haberleşmemek'
-
-# 3. Çözüm Açıklama mapping'leri
-unsur = structures.çözüm_açıklama_to_unsur.get('belirli bir çözüm açıklama')
-kategori = structures.çözüm_açıklama_to_kategori.get('belirli bir çözüm açıklama')
-kök_neden = structures.çözüm_açıklama_to_kök_neden.get('belirli bir çözüm açıklama')
-cause_code = structures.çözüm_açıklama_to_cause_code.get('belirli bir çözüm açıklama')
-
-# 4. Cause code'dan şebeke unsurunu bul
-unsur_from_cause = structures.cause_code_to_unsur.get('123')
-
-# === Detaylı Token Bilgisi İçin ===
-# Internal mapping'den tam bilgi alınabilir:
-token = structures.id_to_token[3]
-print(f"Lemma: {token.lemma}")
-print(f"Display Lemma: {token.to_display_lemma()}")  # 'haberleşmemek'
-print(f"POS: {token.pos}")
-print(f"Is Negative: {token.is_negative}")
-print(f"Morphemes: {token.morphemes}")
-"""

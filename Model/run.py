@@ -60,14 +60,12 @@ if __name__ == "__main__":
     structures = build_morphosemantic_structures_v3(
         df,
         zemb,
-        config.cause_code_şebeke_unsuru_path,
         dokunma,
         çözüm_açıklama_info,
-        None,
         cause_code_info
     )
 
-    _input = pd.read_excel(config.input_concatted_path)
+    _input = pd.read_excel(config.get_path('input_concatted_path'))
     
     # Corrector'ı oluştur
     corrector = BeamSearchCorrector(
